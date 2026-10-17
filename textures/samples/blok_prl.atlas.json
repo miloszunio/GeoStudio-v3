@@ -1,0 +1,218 @@
+{
+	"auto": true,
+	"image": "res://textures/samples/blok_prl.png",
+	"image_size": [
+		1254,
+		1254
+	],
+	"mode": "sheet",
+	"regions": {
+		"facade_gable_1": {
+			"rect": [
+				683,
+				6,
+				273,
+				618
+			],
+			"role": "facade_gable"
+		},
+		"facade_gable_2": {
+			"rect": [
+				963,
+				6,
+				282,
+				616
+			],
+			"role": "facade_gable"
+		},
+		"facade_gable_3": {
+			"rect": [
+				666,
+				633,
+				240,
+				590
+			],
+			"role": "facade_gable"
+		},
+		"facade_long_1": {
+			"rect": [
+				6,
+				6,
+				682,
+				659
+			],
+			"role": "facade_long"
+		},
+		"facade_long_2": {
+			"rect": [
+				9,
+				666,
+				657,
+				557
+			],
+			"role": "facade_long"
+		},
+		"misc_1": {
+			"rect": [
+				908,
+				807,
+				76,
+				102
+			],
+			"role": "misc"
+		},
+		"misc_10": {
+			"rect": [
+				1046,
+				1060,
+				84,
+				64
+			],
+			"role": "misc"
+		},
+		"misc_11": {
+			"rect": [
+				1063,
+				1127,
+				56,
+				103
+			],
+			"role": "misc"
+		},
+		"misc_12": {
+			"rect": [
+				1122,
+				1127,
+				47,
+				103
+			],
+			"role": "misc"
+		},
+		"misc_2": {
+			"rect": [
+				988,
+				807,
+				72,
+				102
+			],
+			"role": "misc"
+		},
+		"misc_3": {
+			"rect": [
+				1068,
+				812,
+				75,
+				72
+			],
+			"role": "misc"
+		},
+		"misc_4": {
+			"rect": [
+				1149,
+				810,
+				59,
+				65
+			],
+			"role": "misc"
+		},
+		"misc_5": {
+			"rect": [
+				908,
+				912,
+				73,
+				75
+			],
+			"role": "misc"
+		},
+		"misc_6": {
+			"rect": [
+				989,
+				911,
+				71,
+				76
+			],
+			"role": "misc"
+		},
+		"misc_7": {
+			"rect": [
+				1064,
+				892,
+				41,
+				132
+			],
+			"role": "misc"
+		},
+		"misc_8": {
+			"rect": [
+				1110,
+				886,
+				56,
+				138
+			],
+			"role": "misc"
+		},
+		"misc_9": {
+			"rect": [
+				1169,
+				881,
+				41,
+				77
+			],
+			"role": "misc"
+		},
+		"roof_1": {
+			"rect": [
+				911,
+				630,
+				332,
+				171
+			],
+			"role": "roof"
+		},
+		"roof_trim_1": {
+			"rect": [
+				1215,
+				854,
+				25,
+				380
+			],
+			"role": "roof_trim"
+		},
+		"roof_trim_2": {
+			"rect": [
+				908,
+				989,
+				156,
+				33
+			],
+			"role": "roof_trim"
+		},
+		"roof_trim_3": {
+			"rect": [
+				933,
+				1024,
+				105,
+				28
+			],
+			"role": "roof_trim"
+		},
+		"roof_trim_4": {
+			"rect": [
+				1046,
+				1027,
+				155,
+				28
+			],
+			"role": "roof_trim"
+		},
+		"window_1": {
+			"rect": [
+				915,
+				1050,
+				146,
+				180
+			],
+			"role": "window"
+		}
+	}
+}

@@ -1,0 +1,41 @@
+{
+  "type": "FeatureCollection",
+  "name": "stacja_wroniawy_demo",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Stacja Wroniawy (demo)",
+        "wall_height": 3.6,
+        "roof_height": 2.0
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              -5.0,
+              -3.0
+            ],
+            [
+              5.0,
+              -3.0
+            ],
+            [
+              5.0,
+              3.0
+            ],
+            [
+              -5.0,
+              3.0
+            ],
+            [
+              -5.0,
+              -3.0
+            ]
+          ]
+        ]
+      }
+    }
+  ]
+}

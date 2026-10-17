@@ -1,0 +1,191 @@
+{
+	"auto": true,
+	"image": "res://textures/samples/stacja_zolta.png",
+	"image_size": [
+		1254,
+		1254
+	],
+	"mode": "sheet",
+	"regions": {
+		"chimney_1": {
+			"rect": [
+				1021,
+				1129,
+				71,
+				117
+			],
+			"role": "chimney"
+		},
+		"door_1": {
+			"rect": [
+				566,
+				793,
+				144,
+				345
+			],
+			"role": "door"
+		},
+		"door_2": {
+			"rect": [
+				814,
+				795,
+				119,
+				258
+			],
+			"role": "door"
+		},
+		"door_3": {
+			"rect": [
+				944,
+				792,
+				116,
+				260
+			],
+			"role": "door"
+		},
+		"door_4": {
+			"rect": [
+				1068,
+				792,
+				117,
+				261
+			],
+			"role": "door"
+		},
+		"drainpipe_1": {
+			"rect": [
+				1188,
+				792,
+				39,
+				302
+			],
+			"role": "drainpipe"
+		},
+		"drainpipe_2": {
+			"rect": [
+				1227,
+				792,
+				19,
+				310
+			],
+			"role": "drainpipe"
+		},
+		"drainpipe_3": {
+			"rect": [
+				1006,
+				1077,
+				173,
+				33
+			],
+			"role": "drainpipe"
+		},
+		"facade_gable_1": {
+			"rect": [
+				815,
+				8,
+				433,
+				390
+			],
+			"role": "facade_gable"
+		},
+		"facade_gable_2": {
+			"rect": [
+				818,
+				401,
+				431,
+				383
+			],
+			"role": "facade_gable"
+		},
+		"facade_long_1": {
+			"rect": [
+				9,
+				3,
+				800,
+				390
+			],
+			"role": "facade_long"
+		},
+		"facade_long_2": {
+			"rect": [
+				8,
+				400,
+				802,
+				377
+			],
+			"role": "facade_long"
+		},
+		"misc_1": {
+			"rect": [
+				1097,
+				1107,
+				148,
+				138
+			],
+			"role": "misc"
+		},
+		"misc_2": {
+			"rect": [
+				574,
+				1140,
+				26,
+				105
+			],
+			"role": "misc"
+		},
+		"misc_3": {
+			"rect": [
+				626,
+				1143,
+				59,
+				75
+			],
+			"role": "misc"
+		},
+		"roof_1": {
+			"rect": [
+				8,
+				796,
+				545,
+				447
+			],
+			"role": "roof"
+		},
+		"window_1": {
+			"rect": [
+				712,
+				793,
+				92,
+				187
+			],
+			"role": "window"
+		},
+		"window_2": {
+			"rect": [
+				702,
+				1044,
+				96,
+				201
+			],
+			"role": "window"
+		},
+		"window_3": {
+			"rect": [
+				807,
+				1063,
+				79,
+				182
+			],
+			"role": "window"
+		},
+		"window_4": {
+			"rect": [
+				895,
+				1063,
+				107,
+				182
+			],
+			"role": "window"
+		}
+	}
+}

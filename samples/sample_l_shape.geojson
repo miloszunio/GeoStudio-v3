@@ -1,0 +1,47 @@
+{
+  "type": "FeatureCollection",
+  "name": "l_shape_demo",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Budynek w kształcie L (demo)"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              -8.0,
+              -5.0
+            ],
+            [
+              8.0,
+              -5.0
+            ],
+            [
+              8.0,
+              5.0
+            ],
+            [
+              3.0,
+              5.0
+            ],
+            [
+              3.0,
+              8.0
+            ],
+            [
+              -8.0,
+              8.0
+            ],
+            [
+              -8.0,
+              -5.0
+            ]
+          ]
+        ]
+      }
+    }
+  ]
+}

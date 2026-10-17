@@ -1,0 +1,196 @@
+{
+  "name": "Wroniawy - opuszczona stacja",
+  "image": "atlas_wroniawy.png",
+  "note": "rect = [x, y, w, h] w pikselach atlasu. Dla elewacji rect obejmuje TYLKO ścianę (bez dachu i gruntu), żeby UV 0..1 pokrywało całą ścianę modelu. Wartości elewacji są ustawione na oko - popraw je, jeśli brzegi nie pasują.",
+  "regions": {
+    "facade_long_a": {
+      "role": "facade_long",
+      "rect": [
+        45,
+        98,
+        707,
+        264
+      ]
+    },
+    "facade_long_b": {
+      "role": "facade_long",
+      "rect": [
+        37,
+        487,
+        718,
+        265
+      ]
+    },
+    "facade_gable_a": {
+      "role": "facade_gable",
+      "rect": [
+        858,
+        50,
+        332,
+        332
+      ]
+    },
+    "facade_gable_b": {
+      "role": "facade_gable",
+      "rect": [
+        858,
+        440,
+        340,
+        310
+      ]
+    },
+    "roof_slate": {
+      "role": "roof",
+      "rect": [
+        21,
+        793,
+        394,
+        439
+      ]
+    },
+    "roof_trim": {
+      "role": "roof_trim",
+      "rect": [
+        433,
+        790,
+        64,
+        307
+      ]
+    },
+    "door_barn": {
+      "role": "door",
+      "rect": [
+        509,
+        790,
+        158,
+        266
+      ]
+    },
+    "door_barred": {
+      "role": "door",
+      "rect": [
+        675,
+        790,
+        93,
+        254
+      ]
+    },
+    "door_white": {
+      "role": "door",
+      "rect": [
+        675,
+        1065,
+        50,
+        128
+      ]
+    },
+    "window_white": {
+      "role": "window",
+      "rect": [
+        775,
+        790,
+        100,
+        207
+      ]
+    },
+    "window_broken": {
+      "role": "window",
+      "rect": [
+        885,
+        790,
+        96,
+        178
+      ]
+    },
+    "window_mesh": {
+      "role": "window",
+      "rect": [
+        988,
+        791,
+        107,
+        200
+      ]
+    },
+    "window_boarded": {
+      "role": "window",
+      "rect": [
+        1103,
+        790,
+        104,
+        201
+      ]
+    },
+    "drainpipe": {
+      "role": "drainpipe",
+      "rect": [
+        859,
+        783,
+        381,
+        327
+      ]
+    },
+    "eave_corner": {
+      "role": "eave",
+      "rect": [
+        959,
+        1046,
+        280,
+        188
+      ]
+    },
+    "lamp": {
+      "role": "misc",
+      "rect": [
+        789,
+        1006,
+        43,
+        50
+      ]
+    },
+    "sill_plaque": {
+      "role": "misc",
+      "rect": [
+        735,
+        1065,
+        111,
+        52
+      ]
+    },
+    "fence": {
+      "role": "fence",
+      "rect": [
+        742,
+        1107,
+        224,
+        130
+      ]
+    },
+    "utility_box": {
+      "role": "misc",
+      "rect": [
+        581,
+        1101,
+        84,
+        135
+      ]
+    },
+    "chimney_a": {
+      "role": "chimney",
+      "rect": [
+        435,
+        1109,
+        57,
+        128
+      ]
+    },
+    "chimney_b": {
+      "role": "chimney",
+      "rect": [
+        501,
+        1105,
+        69,
+        132
+      ]
+    }
+  }
+}

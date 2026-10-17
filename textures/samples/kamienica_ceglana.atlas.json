@@ -1,0 +1,201 @@
+{
+	"auto": true,
+	"image": "res://textures/samples/kamienica_ceglana.png",
+	"image_size": [
+		1536,
+		1024
+	],
+	"mode": "sheet",
+	"regions": {
+		"door_1": {
+			"rect": [
+				851,
+				734,
+				109,
+				270
+			],
+			"role": "door"
+		},
+		"drainpipe_1": {
+			"rect": [
+				772,
+				734,
+				36,
+				270
+			],
+			"role": "drainpipe"
+		},
+		"drainpipe_2": {
+			"rect": [
+				813,
+				753,
+				35,
+				251
+			],
+			"role": "drainpipe"
+		},
+		"drainpipe_3": {
+			"rect": [
+				918,
+				851,
+				113,
+				153
+			],
+			"role": "drainpipe"
+		},
+		"facade_gable_1": {
+			"rect": [
+				770,
+				4,
+				389,
+				533
+			],
+			"role": "facade_gable"
+		},
+		"facade_gable_2": {
+			"rect": [
+				1170,
+				4,
+				362,
+				533
+			],
+			"role": "facade_gable"
+		},
+		"facade_long_1": {
+			"rect": [
+				8,
+				0,
+				756,
+				539
+			],
+			"role": "facade_long"
+		},
+		"misc_1": {
+			"rect": [
+				1264,
+				557,
+				260,
+				447
+			],
+			"role": "misc"
+		},
+		"misc_2": {
+			"rect": [
+				912,
+				734,
+				220,
+				108
+			],
+			"role": "misc"
+		},
+		"misc_3": {
+			"rect": [
+				1145,
+				759,
+				64,
+				43
+			],
+			"role": "misc"
+		},
+		"misc_4": {
+			"rect": [
+				1222,
+				732,
+				93,
+				103
+			],
+			"role": "misc"
+		},
+		"misc_5": {
+			"rect": [
+				1358,
+				734,
+				126,
+				108
+			],
+			"role": "misc"
+		},
+		"misc_6": {
+			"rect": [
+				907,
+				889,
+				91,
+				94
+			],
+			"role": "misc"
+		},
+		"misc_7": {
+			"rect": [
+				1037,
+				851,
+				57,
+				130
+			],
+			"role": "misc"
+		},
+		"misc_8": {
+			"rect": [
+				1104,
+				849,
+				247,
+				155
+			],
+			"role": "misc"
+		},
+		"roof_1": {
+			"rect": [
+				12,
+				555,
+				729,
+				414
+			],
+			"role": "roof"
+		},
+		"window_1": {
+			"rect": [
+				774,
+				555,
+				115,
+				170
+			],
+			"role": "window"
+		},
+		"window_2": {
+			"rect": [
+				911,
+				555,
+				102,
+				170
+			],
+			"role": "window"
+		},
+		"window_3": {
+			"rect": [
+				1033,
+				555,
+				101,
+				170
+			],
+			"role": "window"
+		},
+		"window_4": {
+			"rect": [
+				1152,
+				555,
+				97,
+				170
+			],
+			"role": "window"
+		},
+		"window_5": {
+			"rect": [
+				1362,
+				849,
+				120,
+				155
+			],
+			"role": "window"
+		}
+	},
+	"template": false
+}

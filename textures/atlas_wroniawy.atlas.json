@@ -1,0 +1,209 @@
+{
+	"auto": true,
+	"image": "res://textures/atlas_wroniawy.png",
+	"image_size": [
+		1254,
+		1254
+	],
+	"mode": "sheet",
+	"regions": {
+		"door_1": {
+			"rect": [
+				506,
+				789,
+				163,
+				269
+			],
+			"role": "door"
+		},
+		"door_2": {
+			"rect": [
+				674,
+				789,
+				96,
+				256
+			],
+			"role": "door"
+		},
+		"drainpipe_1": {
+			"rect": [
+				857,
+				781,
+				384,
+				330
+			],
+			"role": "drainpipe"
+		},
+		"eave_1": {
+			"rect": [
+				958,
+				1044,
+				283,
+				191
+			],
+			"role": "eave"
+		},
+		"facade_gable_1": {
+			"rect": [
+				803,
+				11,
+				448,
+				384
+			],
+			"role": "facade_gable"
+		},
+		"facade_gable_2": {
+			"rect": [
+				803,
+				400,
+				446,
+				371
+			],
+			"role": "facade_gable"
+		},
+		"facade_long_1": {
+			"rect": [
+				3,
+				5,
+				798,
+				388
+			],
+			"role": "facade_long"
+		},
+		"facade_long_2": {
+			"rect": [
+				5,
+				403,
+				796,
+				367
+			],
+			"role": "facade_long"
+		},
+		"misc_1": {
+			"rect": [
+				434,
+				1107,
+				60,
+				131
+			],
+			"role": "misc"
+		},
+		"misc_2": {
+			"rect": [
+				499,
+				1104,
+				73,
+				134
+			],
+			"role": "misc"
+		},
+		"misc_3": {
+			"rect": [
+				516,
+				1064,
+				152,
+				57
+			],
+			"role": "misc"
+		},
+		"misc_4": {
+			"rect": [
+				578,
+				1099,
+				88,
+				139
+			],
+			"role": "misc"
+		},
+		"misc_5": {
+			"rect": [
+				673,
+				1063,
+				54,
+				131
+			],
+			"role": "misc"
+		},
+		"misc_6": {
+			"rect": [
+				734,
+				1063,
+				114,
+				56
+			],
+			"role": "misc"
+		},
+		"misc_7": {
+			"rect": [
+				740,
+				1105,
+				227,
+				133
+			],
+			"role": "misc"
+		},
+		"misc_8": {
+			"rect": [
+				892,
+				1039,
+				63,
+				75
+			],
+			"role": "misc"
+		},
+		"roof_1": {
+			"rect": [
+				16,
+				789,
+				404,
+				449
+			],
+			"role": "roof"
+		},
+		"roof_trim_1": {
+			"rect": [
+				431,
+				789,
+				67,
+				310
+			],
+			"role": "roof_trim"
+		},
+		"window_1": {
+			"rect": [
+				773,
+				789,
+				103,
+				209
+			],
+			"role": "window"
+		},
+		"window_2": {
+			"rect": [
+				883,
+				789,
+				100,
+				181
+			],
+			"role": "window"
+		},
+		"window_3": {
+			"rect": [
+				986,
+				789,
+				111,
+				203
+			],
+			"role": "window"
+		},
+		"window_4": {
+			"rect": [
+				1102,
+				789,
+				106,
+				203
+			],
+			"role": "window"
+		}
+	}
+}
