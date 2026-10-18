@@ -60,6 +60,19 @@ func _on_texture_source_changed(force_slice := false) -> void:
 ## Texture source (an app.atlas JSON, a sheet that gets cut into panels, or one photo) and the photo
 ## library end up in the same TextureAtlas, so every drop-down below offers both.
 func _load_atlas(path: String, rebuild: bool, force_slice := false) -> void:
+	var tag_note := ""
+	if path != "":
+		var tagged := TagSheet.normalize(path, SheetLayout.from_json(app.settings.s("tex_sheet_layout")))
+		if str(tagged["path"]) != "":
+			path = str(tagged["path"])    # the sheet was drawn with colour tags: cut by them and laid out by the program
+			force_slice = true
+			tag_note = "Arkusz z ramkami-tagami: znaleziono %s" % ", ".join(tagged["found"])
+			if not (tagged["missing"] as Array).is_empty():
+				tag_note += "; BRAK: " + ", ".join(tagged["missing"])
+			for n in tagged["notes"]:
+				tag_note += "; " + str(n)
+			if app.project.is_open():
+				app.project.log_event(tag_note)
 	var err = app.atlas.load_source(path, _slice_opts(), force_slice)
 	var src_count = app.atlas.regions.size()
 	var lib_count := 0
@@ -84,6 +97,8 @@ func _load_atlas(path: String, rebuild: bool, force_slice := false) -> void:
 		msg += ". Podział zapisano: " + ProjectSettings.globalize_path(app.atlas.sidecar_path)
 	if err != "":
 		msg += " (" + err + ")"
+	if tag_note != "":
+		msg = tag_note + ". " + msg
 	app._set_status(msg)
 	app._update_steps()
 	if src_count > 0 and not loading_tex and app.panel != null:

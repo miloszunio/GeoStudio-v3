@@ -17,7 +17,7 @@
 | `chimney_flow.gd` + `chimney_editor.gd` | `ChimneyFlow`, `ChimneyEditor` | kominy: dane (`model_chimneys`), siatka na dachu, okno z rzutem z góry i dwoma rzutami bocznymi |
 
 Moduły bez stanu sceny (testowalne osobno): `gpt_prompt.gd`, `gpt_describe.gd` (kontrakt JSON od GPT, walidacja, tabela klas materiałów, dociąganie prostokątów),
-`sheet_layout.gd` (układ arkusza z wymiarów ścian: MaxRects, wspólne px/m, obraz-szablon), `model_meta.gd`, `model_exporter.gd`, `rectify.gd` (homografia), `face_store.gd` (korekty powierzchni z undo), `atlas_slicer.gd`, `texture_atlas.gd`.
+`tag_sheet.gd` (import arkusza z kolorowymi ramkami-tagami), `sheet_layout.gd` (układ arkusza z wymiarów ścian: MaxRects, wspólne px/m, obraz-szablon), `model_meta.gd`, `model_exporter.gd`, `rectify.gd` (homografia), `face_store.gd` (korekty powierzchni z undo), `atlas_slicer.gd`, `texture_atlas.gd`.
 
 UI: `settings_panel.gd` buduje panel boczny z opisu w `app_settings.gd`. Sekcje z listy `AppSettings.ADVANCED_SECTIONS` trafiają do okna
 „Zaawansowane…” danej karty (Zapisz / Anuluj). `face_panel.gd` + `face_preview.gd` + `uv_editor.gd` to panel korekt, podgląd ściany i edytor na całe okno.

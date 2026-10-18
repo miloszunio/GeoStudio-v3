@@ -78,8 +78,8 @@ static func scale_px_per_m(info: Dictionary) -> int:
 
 static func _frame_line(code: String, title: String, lay: Dictionary, extra := "") -> String:
 	var f: Array = lay["pictures"][code]
-	return "- %s – %s: lewy górny róg (x = %d, y = %d), szerokość DOKŁADNIE %d px, wysokość najwyżej %d px.%s" % [
-		code, title, int(f[0]), int(f[1]), int(f[2]), int(f[3]), extra]
+	return "- %s – ramka %s – %s: szerokość obrazu w ramce DOKŁADNIE %d px, wysokość najwyżej %d px.%s" % [
+		code, TagSheet.TAG_NAMES.get(code, "?"), title, int(f[2]), int(f[3]), extra]
 
 
 static func build(info: Dictionary) -> String:
@@ -94,7 +94,7 @@ static func build(info: Dictionary) -> String:
 	var ppm := int(lay["ppm"])
 
 	var l: Array[String] = []
-	l.append("Zrób z załączonych zdjęć JEDEN arkusz tekstur budynku do modelu 3D. Wynik: obraz kwadratowy 4096 × 4096 px.")
+	l.append("Zrób z załączonych zdjęć JEDEN arkusz tekstur budynku do modelu 3D. Wynik: obraz kwadratowy 4096 × 4096 px, każdy element w kolorowej ramce-tagu.")
 	l.append("")
 	l.append("BUDYNEK (dane z ewidencji gruntów i budynków)")
 	if str(info.get("name", "")) != "":
@@ -115,15 +115,15 @@ static func build(info: Dictionary) -> String:
 	if str(info.get("kind", "")) != "":
 		l.append("- rodzaj wg ewidencji (KST): %s" % info["kind"])
 	l.append("")
-	l.append("UKŁAD ARKUSZA")
-	l.append("Płótno 4096 × 4096 px, tło jednolity szary #808080. Do wiadomości może być dołączony obraz-szablon z czerwonymi ramkami i numerami: to TYLKO plan rozmieszczenia. Na wyniku nie może być żadnych ramek, numerów ani niebieskich linii. Bez szablonu rozmieść obrazy według współrzędnych poniżej.")
-	l.append("SKALA: cały arkusz ma JEDNĄ skalę – 1 m rzeczywistej ściany = %d px. Szerokości są dokładne. Wysokość w ramce to tylko maksimum (ewidencja zaniża wysokość ścian): rysuj ścianę w jej prawdziwych proporcjach ze zdjęcia, od ziemi do okapu, i NIE rozciągaj obrazu, żeby wypełnić ramkę. Niewykorzystane miejsce w ramce zostaw szare." % ppm)
+	l.append("UKŁAD ARKUSZA – RAMKI-TAGI (najważniejsze)")
+	l.append("Płótno 4096 × 4096 px, tło jednolity szary #808080. Obrazy mogą leżeć w DOWOLNYM miejscu, w dowolnej kolejności – program sam je wytnie i ułoży. Ale KAŻDY obraz musi mieć wokół siebie ramkę-tag: ciągłą, jednolitą linię o grubości 16 px, w przypisanym mu kolorze, ułożoną dokładnie na krawędziach prostokątnego kadru obrazu (cały prostokąt, także przy szczycie z szarymi rogami). Kolor mówi, CO to za obraz, ramka mówi, GDZIE jest. Kolory są czyste, bez gradientu, cienia i wygładzania (#FF0000 itd.), nie używaj ich nigdzie indziej na obrazie. Wewnątrz ramki jest tylko obraz, bez opisów i numerów. Obrazy nie nachodzą na siebie i nie dotykają się (zostaw min. 40 px odstępu).")
+	l.append("SKALA: cały arkusz ma JEDNĄ skalę – 1 m rzeczywistej ściany = %d px. Szerokości w ramkach podano w pikselach tej skali. Wysokość to tylko maksimum (ewidencja zaniża wysokość ścian): rysuj ścianę w jej prawdziwych proporcjach ze zdjęcia, od ziemi do okapu, i NIE rozciągaj obrazu. Ramka obejmuje dokładnie obraz ściany, bez zapasu." % ppm)
 	l.append(_frame_line("S1", "ściana długa A (frontowa, ze wszystkimi drzwiami i oknami widocznymi na zdjęciach)", lay))
 	l.append(_frame_line("S2", "ściana długa B (przeciwna do S1; jeśli nie ma jej zdjęcia, wywnioskuj ją według zasady 8)", lay))
 	var gable_extra := ""
 	if roof_kind == "gable":
 		var eave_px := int(lay["eave_px"].get("S3", 0))
-		gable_extra = " Kontur ma kształt „domku”: prostokąt ściany (do okapu, ok. %d px od dołu) i trójkąt szczytu nad nim aż do wierzchołka na środku. Dwa rogi obok trójkąta zostaw szare (tło). Bez komina i bez kawałka połaci dachu poza krawędzią." % eave_px
+		gable_extra = " Ramka obejmuje cały prostokąt kadru. Kontur ma kształt „domku”: prostokąt ściany (do okapu, ok. %d px od dołu) i trójkąt szczytu nad nim aż do wierzchołka na środku. Dwa rogi obok trójkąta zostaw szare (tło). Bez komina i bez kawałka połaci dachu poza krawędzią." % eave_px
 	l.append(_frame_line("S3", "ściana szczytowa A", lay, gable_extra))
 	l.append(_frame_line("S4", "ściana szczytowa B", lay, gable_extra))
 	var slope := _slope(info)
@@ -134,7 +134,7 @@ static func build(info: Dictionary) -> String:
 			break
 		l.append(_frame_line("S%d" % idx, "ściana dobudówki", lay))
 		idx += 1
-	l.append("Pozostałe miejsce na płótnie zostaw szare.")
+	l.append("Pozostałe miejsce na płótnie zostaw szare. Każdy z obrazów S1…S%d ma pojawić się dokładnie raz, w swojej ramce." % (5 + mini(annexes.size(), 3)))
 	l.append("")
 	l.append("ZADANIE – to jest fototekstura, nie rysunek")
 	l.append("Jeśli na zdjęciu widać CAŁĄ ścianę, POPRAW tę ścianę, zamiast rysować nową: wyprostuj perspektywę, usuń to, co ją zasłania, uzupełnij braki. Okna, drzwi, ich LICZBA i ROZSTAW, kolory, gzymsy, pęknięcia i zabrudzenia mają zostać takie, jakie są na zdjęciu. Wymyślaj wyłącznie tam, gdzie zdjęcia ściany brakuje.")
@@ -147,10 +147,10 @@ static func build(info: Dictionary) -> String:
 	l.append("")
 	l.append("ZASADY")
 	l.append("1. Każdy obraz to płaskie, frontalne zdjęcie bez perspektywy (jakby zrobione teleobiektywem na wprost), krawędzie pionowe i poziome.")
-	l.append("2. Tło poza obrazami: jednolity szary #808080, bez gradientu i cienia. Od krawędzi ramki zostaw 16 px tła.")
+	l.append("2. Tło poza obrazami: jednolity szary #808080, bez gradientu i cienia. Ramki-tagi są jedynym kolorowym elementem poza zdjęciami.")
 	l.append("3. Usuń: niebo, trawę, ludzi, samochody, drzewa, krzaki przed ścianą, napisy i znaki wodne. Uzupełnij tynk lub cegłę tam, gdzie coś zasłaniało. Okna, drzwi, gzyms i cokół zostają w ścianie – nie wydzielaj ich.")
 	l.append("4. Ściana kończy się na linii okapu: BEZ dachu, dachówek, kominów, rynien, rur spustowych i nieba nad nią (S1, S2, dobudówki). Cokół zostaje. Szczyt kończy się na krawędzi dachu.")
-	l.append("5. Nie dodawaj opisów, ramek, numerów ani legendy na obrazie.")
+	l.append("5. Poza ramkami-tagami nie dodawaj żadnych opisów, numerów, strzałek ani legendy.")
 	l.append("6. Elementy, które SĄ na zdjęciu (pas z cegły, gzyms, cokół, narożniki), przeprowadź przez całą szerokość ściany bez przerw, na tej samej wysokości i o tej samej grubości. NIGDY nie dodawaj tego, czego nie ma na zdjęciu: nowych pasów, wiązań, podziałów pól ani okien.")
 	l.append("7. Dach (S5): sama faktura pokrycia, powtarzalna, równomierna.")
 	l.append("8. Jeśli brakuje zdjęcia jakiejś ściany, wywnioskuj ją ze stylu pozostałych, ale TYLKO materiał, kolor i ogólny charakter. Okna dodaj tam, gdzie wynikają z reszty budynku, i oznacz sektor w JSON jako „inferred”.")

@@ -155,7 +155,7 @@ Kominy są zapisane w projekcie, widoczne razem z dachem (przełącznik „Poka�
 Program liczy dla każdej ściany ramkę o jej **prawdziwych proporcjach** (szerokość × wysokość w metrach razy jedna wspólna skala px/m), pakuje
 ramki ciasno na płótnie (MaxRects) i wybiera **największe możliwe px/m**, przy którym wszystko się mieści – nic nie jest rozciągane, a puste miejsce
 zamienia się w rozdzielczość. Szczyt dostaje prawie kwadratową ramkę, a nie sektor 2:1. Prompt podaje współrzędne i rozmiary ramek, a program rysuje też
-**obraz-szablon** (`texture/szablon_arkusza.png`, przycisk „Pokaż obraz-szablon” w oknie promptu): czerwone ramki z numerami i kontur „domku” na szczytach.
+**ramki-tagi** (zamiast obrazu-szablonu): ChatGPT rysuje każdy obraz w dowolnym miejscu płótna, ale w ramce o przypisanym kolorze (S1 czerwona #FF0000, S2 zielona #00FF00, S3 niebieska #0000FF, S4 żółta #FFFF00, S5 magenta #FF00FF, S6 cyjan, S7 pomarańczowa, S8 fioletowa). Przy wczytaniu program (`TagSheet`) znajduje ramki, wycina obrazy wzdłuż nich, skaluje do prawdziwej szerokości ściany (ściany: wysokość z proporcji obrazu, nie większa niż ramka układu; szczyty i dach: na całą ramkę) i układa je w arkuszu obliczonym z wymiarów. Złożony arkusz trafia obok pliku jako `<nazwa>_arkusz.png`. Kolejność, położenie i rozmiar obrazów u GPT nie mają już znaczenia. Zwykły obraz bez ramek wczytuje się jak dawniej; brakującą ramkę program zgłasza w statusie.
 Dołącz go do wiadomości dla GPT razem ze zdjęciami (na wyniku ramek nie może być). Układ zapisuje się w projekcie i po wczytaniu arkusz jest cięty po tych
 ramkach; stary stały układ 2 × 4 sektory (2048 × 1024) nadal działa dla starych arkuszy.
 

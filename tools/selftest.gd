@@ -840,13 +840,14 @@ func _place_checks() -> void:
 	ok(parsed.size() == 1 and absf(float(parsed[0]["lat"]) - 52.1) < 1e-9, "Nominatim answer parsed")
 	var txt := GptPrompt.build({"name": "dom", "place": "Test", "floors": 1, "kind": "m", "roof": "gable",
 		"main": {"len": 10.0, "wid": 6.0, "wall_h": 3.0, "roof_h": 2.0}, "annexes": [{"len": 4.0, "wall_h": 2.5}]})
-	ok("4096 × 4096" in txt and "szerokość DOKŁADNIE" in txt and "od ziemi do okapu" in txt and "S6" in txt and "dobudówki" in txt and "Pozostałe miejsce na płótnie" in txt, "GPT prompt carries layout and wall dimensions")
+	ok("4096 × 4096" in txt and "w ramce DOKŁADNIE" in txt and "od ziemi do okapu" in txt and "S6" in txt and "dobudówki" in txt and "Pozostałe miejsce na płótnie" in txt, "GPT prompt carries layout and wall dimensions")
 	var ginfo := {"main": {"len": 10.0, "wid": 6.0, "wall_h": 3.0, "roof_h": 2.0}, "roof": "gable", "annexes": []}
 	var ppm := GptPrompt.scale_px_per_m(ginfo)
 	ok(ppm > 100 and ("1 m rzeczywistej ściany = %d px" % ppm) in GptPrompt.build(ginfo), "one scale for the whole sheet: %d px/m (10 m wide wall = %d px)" % [ppm, 10 * ppm])
 	var ptx := GptPrompt.build(ginfo)
 	ok("NIGDY nie skaluj okien ani cegieł według wysokości całego szczytu" in ptx and "cokołu" in ptx and "kształt „domku”" in ptx, "prompt: windows are never scaled by the gable height; the plinth-to-band segment is the common measure")
 	_layout_checks()
+	_tag_checks()
 	_template_checks()
 
 
@@ -950,6 +951,41 @@ func _chimney_checks(main: Control) -> void:
 	ok((rm.get("chimneys", []) as Array).size() == 1 and absf(float(rm["chimneys"][0]["size"][0]) - 0.6) < 1e-6, "root meta lists the chimney (size, centre, height)")
 	flow.save([])
 	await process_frame
+
+
+func _tag_checks() -> void:
+	var info := {"main": {"len": 10.0, "wid": 6.0, "wall_h": 3.0, "roof_h": 2.0}, "roof": "gable", "annexes": []}
+	var lay := GptPrompt.layout(info)
+	var img := Image.create(2048, 2048, false, Image.FORMAT_RGB8)
+	img.fill(Color8(200, 200, 200))
+	var boxes := {"S1": Rect2i(60, 40, 900, 300), "S2": Rect2i(1000, 100, 800, 260), "S3": Rect2i(100, 500, 420, 520), "S4": Rect2i(700, 600, 400, 500), "S5": Rect2i(200, 1300, 1000, 400)}
+	var fills := {"S1": Color8(180, 90, 60), "S2": Color8(60, 120, 90), "S3": Color8(90, 90, 160), "S4": Color8(150, 150, 60), "S5": Color8(110, 70, 60)}
+	for code in boxes.keys():
+		img.fill_rect(boxes[code], TagSheet.TAGS[code])
+		img.fill_rect((boxes[code] as Rect2i).grow(-14), fills[code])
+	var fr := TagSheet.find_frames(img)
+	ok(fr.size() == 5, "tag sheet: five frames found")
+	var close := true
+	for c in boxes.keys():
+		if not fr.has(c) or absi(int(fr[c]["inner"].position.x) - ((boxes[c] as Rect2i).position.x + 14)) > 6 or absi(int(fr[c]["inner"].size.x) - ((boxes[c] as Rect2i).size.x - 28)) > 8:
+			close = false
+	ok(close, "tag sheet: inner rectangles lie inside the frames")
+	var a := TagSheet.assemble(img, lay)
+	ok(not a.is_empty() and (a["missing"] as Array).is_empty(), "tag sheet: assembled, nothing missing")
+	var sheet: Image = a["image"]
+	var p1: Array = lay["pictures"]["S1"]
+	var c1 := sheet.get_pixel(int(p1[0]) + int(p1[2]) / 2, int(p1[1]) + 20)
+	ok(absf(c1.r - 180.0 / 255.0) < 0.05 and absf(c1.g - 90.0 / 255.0) < 0.05, "tag sheet: S1 content lands in the S1 frame of the layout")
+	var p5: Array = lay["pictures"]["S5"]
+	var c5 := sheet.get_pixel(int(p5[0]) + 30, int(p5[1]) + int(p5[3]) - 30)
+	ok(absf(c5.r - 110.0 / 255.0) < 0.05, "tag sheet: roof is stretched over its whole frame")
+	var plain := Image.create(512, 512, false, Image.FORMAT_RGB8)
+	plain.fill(Color8(170, 110, 80))
+	ok(TagSheet.assemble(plain, lay).is_empty(), "tag sheet: a plain picture is not touched")
+	img.fill_rect(boxes["S2"], Color8(200, 200, 200))
+	var a2 := TagSheet.assemble(img, lay)
+	ok((a2["missing"] as Array).has("S2"), "tag sheet: a missing picture is reported")
+	ok(GptPrompt.build(info).contains("RAMKI-TAGI") and GptPrompt.build(info).contains("#FF0000"), "prompt describes the colour tags")
 
 
 func _layout_checks() -> void:

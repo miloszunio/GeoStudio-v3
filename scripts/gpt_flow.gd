@@ -46,7 +46,6 @@ func _show_gpt_prompt() -> void:
 	var lay := GptPrompt.layout(ginfo)
 	app.settings.set_value("tex_px_per_m", float(lay["ppm"]))   # the sheet will be drawn at this scale
 	app.settings.set_value("tex_sheet_layout", SheetLayout.to_json(lay))   # the sheet is cut back by these frames
-	var guide_path := _save_guide(lay)
 	if app.project.is_open():
 		app.project.write_text("texture/prompt_gpt.txt", text)
 		app.project.log_event("Wygenerowano prompt dla GPT (%d px/m, wypełnienie płótna %d%%)" % [int(lay["ppm"]), int(round(float(lay["fill"]) * 100.0))])
@@ -82,15 +81,8 @@ func _show_gpt_prompt() -> void:
 		DisplayServer.clipboard_set(edit.text)
 		copy.text = "Skopiowano ✓")
 	row.add_child(copy)
-	var guide_btn := Button.new()
-	guide_btn.text = "Pokaż obraz-szablon"
-	guide_btn.custom_minimum_size.y = 38
-	guide_btn.disabled = guide_path == ""
-	guide_btn.tooltip_text = "Plik PNG z ramkami S1…: dołącz go do wiadomości dla GPT razem ze zdjęciami."
-	guide_btn.pressed.connect(func() -> void: OS.shell_open(guide_path.get_base_dir()))
-	row.add_child(guide_btn)
 	var hint := Label.new()
-	hint.text = "Wklej do ChatGPT razem ze zdjęciami i obrazem-szablonem (%d px/m, płótno wykorzystane w %d%%)." % [int(lay["ppm"]), int(round(float(lay["fill"]) * 100.0))]
+	hint.text = "Wklej do ChatGPT razem ze zdjęciami. Wynik wczytaj jak zwykły obraz: program sam wytnie ramki-tagi i ułoży arkusz (%d px/m)." % int(lay["ppm"])
 	hint.add_theme_color_override("font_color", Color("#aab6c7"))
 	hint.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.add_child(hint)
@@ -195,7 +187,7 @@ func _gpt_paste_apply(text: String) -> String:
 		app.settings.set_value("tex_slice_mode", "template")      # cut the sheet by the S1-S8 template instead of free panels
 		app.atlasflow._load_atlas(app.settings.s("tex_source"), true)
 		if not app.atlas.is_template:
-			return "[color=#ff7b7b]✗ Obraz nie układa się w ramki S1–S8 z promptu (ani w starą siatkę 2×4). Sprawdź „Podgląd cięcia na regiony…” albo użyj arkusza wygenerowanego z aktualnego promptu i obrazu-szablonu.[/color]"
+			return "[color=#ff7b7b]✗ Nie znaleziono kolorowych ramek-tagów S1–S8 z promptu (ani układu z ewidencji, ani siatki 2×4). Sprawdź „Podgląd cięcia na regiony…” albo wygeneruj arkusz z aktualnego promptu.[/color]"
 	return apply_describe_bbcode(res["data"], res["warnings"])
 
 

@@ -16,7 +16,7 @@ placement, materials, windows and doors) for game engines, Blender or your own p
   annexes), place search with history, local cache and request throttling.
 - **Walls and a separate roof solid.** Gable/flat roof, eaves overhang, thickness, per-part heights, **asymmetric roofs**
   with a dedicated roof editor (angle, ridge position, per-side overhang).
-- **Photo → texture sheet.** The program writes a complete prompt for ChatGPT plus a guide image: a 4096² layout computed from the real wall sizes (one frame per wall in its true proportions, packed tightly, the highest common px/m scale that fits),
+- **Photo → texture sheet.** The program writes a complete prompt for ChatGPT plus colour-tag frames: ChatGPT draws every wall in a frame of its own colour anywhere on the canvas and the program cuts, rescales and lays them out by itself. The layout is a 4096² one computed from the real wall sizes (one frame per wall in its true proportions, packed tightly, the highest common px/m scale that fits),
   and reads back a JSON description (material class, condition, colour, windows and doors).
   The idea is *photo-texturing*: GPT should **correct the visible wall, not invent a new one**; the program warns when the
   number of windows on the sheet differs from the source photo.
