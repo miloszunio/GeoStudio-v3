@@ -9,6 +9,8 @@ dach → kominy → eksport (GLB / glTF / T3D) → plik projektu `.mgdot`” ora
 
 ## 1. Do czego służy program
 
+> GeoStudio jest narzędziem dedykowanym tworzeniu modeli dla symulatora **MaSzyna**, w szczególności **MaSzyna Reloaded**. Podstawowy eksport to T3D; GLB/glTF jest dodatkowy.
+
 1. Wskazujesz budynek na mapie **Geoportal.gov.pl** (obrys z ewidencji EGiB + ortofotomapa) albo wczytujesz własny obrys GeoJSON.
 2. Program buduje bryłę 3D: ściany i **osobną bryłę dachu** (okap, grubość, spód).
 3. Generuje **prompt dla ChatGPT**. ChatGPT ze zdjęć budynku robi jedno **płótno** 4096 × 4096 px z ośmioma sektorami

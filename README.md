@@ -9,6 +9,9 @@ build a 3D model and texture it from photos of the real building. ChatGPT cleans
 maps it onto walls and roof, lets you fix every surface, draw the roof on the gable photo and place chimneys. It exports **GLB/glTF with metadata**
 and **T3D for the MaSzyna train simulator**. The whole project is saved in one **`.mgdot`** file.
 
+> **Purpose.** GeoStudio is a tool made for creating models for the **MaSzyna** train simulator, and in particular for **MaSzyna Reloaded** (the Godot-based edition).
+> It is meant for building scenery objects (houses, outbuildings, chimneys) quickly from real places. GLB/glTF export is a by-product for other uses; the T3D export is the main target.
+
 ![Textured model](docs/img/model-3d.png)
 
 ## What it does

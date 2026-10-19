@@ -9,6 +9,9 @@ i oteksturuj go ze zdjęć rzeczywistego budynku. Zdjęcia czyści i układa w j
 na ściany i dach, pozwala poprawić każdą powierzchnię, narysować dach na zdjęciu szczytu i postawić kominy. Eksportuje **GLB/glTF z metadanymi**
 oraz **T3D dla symulatora MaSzyna**. Cały projekt zapisuje w jednym pliku **`.mgdot`**.
 
+> **Przeznaczenie.** GeoStudio to narzędzie dedykowane tworzeniu modeli dla symulatora **MaSzyna**, w szczególności dla **MaSzyna Reloaded** (wersja na silniku Godot).
+> Służy do szybkiego budowania obiektów scenerii (domy, zabudowania, kominy) na podstawie prawdziwych miejsc. Eksport GLB/glTF jest dodatkiem do innych zastosowań; głównym celem jest eksport T3D.
+
 ![Model z teksturą](docs/img/model-3d.png)
 
 ## Co potrafi

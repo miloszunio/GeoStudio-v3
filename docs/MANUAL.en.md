@@ -10,6 +10,8 @@ roof → chimneys → export (GLB / glTF / T3D) → `.mgdot` project file" and w
 
 ## 1. What the program does
 
+> GeoStudio is made for building models for the **MaSzyna** train simulator, in particular **MaSzyna Reloaded**. T3D is the primary export; GLB/glTF is secondary.
+
 1. You pick a building on the **Geoportal.gov.pl** map (footprint from the Polish land-and-building register EGiB + orthophoto) or load your own GeoJSON outline.
 2. The program builds a 3D solid: walls and a **separate roof solid** (eaves overhang, thickness, underside).
 3. It writes a **prompt for ChatGPT**. From your photos ChatGPT makes one 4096 × 4096 px **canvas** with eight sectors (S1–S8: walls, gables,
