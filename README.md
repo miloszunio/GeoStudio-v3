@@ -49,6 +49,7 @@ godot --headless --path . --export-release "Linux"   build/linux/GeoStudio.x86_6
 - [docs/MANUAL.en.md](docs/MANUAL.en.md) – user and tester manual (EN); [docs/PODRECZNIK.pl.md](docs/PODRECZNIK.pl.md) – the same in Polish.
 - [docs/FORMATS.md](docs/FORMATS.md) – the `.mgdot`, glTF and **T3D** formats (PL + EN).
 - [docs/MODEL_META.md](docs/MODEL_META.md) – the metadata contract of the exported model (PL + EN).
+- [docs/ROADMAP.md](docs/ROADMAP.md) – roadmap (PL + EN).
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) – code layout (PL + EN). [docs/CHANGELOG.md](docs/CHANGELOG.md) – change history.
 
 ## Work in progress – next steps
