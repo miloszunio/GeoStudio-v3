@@ -41,13 +41,22 @@ static func building(info: Dictionary) -> Dictionary:
 		for p in parts:
 			outlines.append(p.get("footprint", []))
 		m["footprints"] = outlines
+		var roofs: Array = []
+		for pi in range(parts.size()):
+			var rp: Dictionary = {}
+			for k in ["ridge_shift", "roof_angles", "roof_profile", "roof_hip_a", "roof_hip_b"]:
+				if parts[pi].has(k):
+					rp[k] = parts[pi][k]
+			if not rp.is_empty():
+				rp["part"] = pi
+				roofs.append(rp)
+		if not roofs.is_empty():
+			m["part_roofs"] = roofs
 	if str(info.get("colour", "")) != "":
 		m["colour"] = info["colour"]
-	for k in ["surfaces", "openings", "chimneys"]:
+	for k in ["chimneys"]:
 		if not (info.get(k, []) as Array).is_empty():
 			m[k] = info[k]
-	if not (info.get("gpt_building", {}) as Dictionary).is_empty():
-		m["described_building"] = info["gpt_building"]
 	if info.get("placement", null) != null:
 		m["placement"] = info["placement"]
 	if info.get("texture", null) != null:

@@ -34,6 +34,113 @@ func _slice_opts() -> Dictionary:
 	}
 
 
+## The canvas from GPT: finds (or takes the stored) panels, lays them out by the real wall sizes, writes
+## "<name>_arkusz.jpg" next to the file and sets the sheet layout. Returns {} when the image has no frames.
+func _normalize_panels(path: String) -> Dictionary:
+	var ext := path.get_extension().to_lower()
+	if not ext in ["png", "jpg", "jpeg", "webp"] or not FileAccess.file_exists(path) or path.get_basename().ends_with("_arkusz"):
+		return {}
+	var info: Dictionary = app.gpt.gpt_info()
+	var sig := PanelSheet.signature(path)
+	var out_path := path.get_basename() + "_arkusz.jpg"
+	# nothing changed since the sheet was laid out last time (same file, panels and building sizes): reuse it
+	var ckey := "%s|%d|%d" % [sig, app.settings.s("tex_panels").hash(), (JSON.stringify(info["main"]) + JSON.stringify(info["annexes"])).hash()]
+	if app.settings.s("tex_panels") != "" and ckey == app.settings.s("tex_sheet_key") and FileAccess.file_exists(out_path) and app.settings.s("tex_sheet_layout") != "":
+		var cached := PanelSheet.panels_from_json(app.settings.s("tex_panels"), sig)
+		if not cached.is_empty():
+			var have: Array = []
+			for pp in cached:
+				have.append(str(pp["code"]))
+			var miss: Array = []
+			for code in PanelSheet.expected(info).keys():
+				if not code in have:
+					miss.append(code)
+			return {"path": out_path, "found": have, "missing": miss, "notes": [], "cached": true}
+	var img := Image.load_from_file(path)
+	if img == null or img.is_empty():
+		return {}
+	var panels := PanelSheet.panels_from_json(app.settings.s("tex_panels"), sig)
+	if panels.is_empty():
+		panels = PanelSheet.detect_and_assign(img, info)
+		if panels.is_empty():
+			return {}
+		_store_panels(sig, panels, true)
+	var res := PanelSheet.build(img, panels, info)
+	if res["image"] == null:
+		return {}
+	# JPG q0.97: PNG encoding of a 4096² sheet took ~7 s and froze the UI
+	var sheet_img: Image = res["image"]
+	sheet_img.convert(Image.FORMAT_RGB8)
+	if sheet_img.save_jpg(out_path, 0.97) != OK:
+		return {}
+	loading_tex = true
+	app.settings.set_value("tex_sheet_layout", SheetLayout.to_json(res["layout"]))
+	app.settings.set_value("tex_px_per_m", float(res["layout"]["ppm"]))
+	# the key is computed after the panels were stored (they may have just been detected)
+	app.settings.set_value("tex_sheet_key", "%s|%d|%d" % [sig, app.settings.s("tex_panels").hash(), (JSON.stringify(info["main"]) + JSON.stringify(info["annexes"])).hash()])
+	loading_tex = false
+	res["path"] = out_path
+	return res
+
+
+func _store_panels(sig: String, panels: Array, auto: bool) -> void:
+	loading_tex = true
+	app.settings.set_value("tex_panels", PanelSheet.panels_to_json(sig, panels, auto))
+	loading_tex = false
+
+
+func panels_are_auto() -> bool:
+	var d = JSON.parse_string(app.settings.s("tex_panels")) if app.settings.s("tex_panels") != "" else null
+	return typeof(d) == TYPE_DICTIONARY and bool(d.get("auto", false))
+
+
+## Window with the canvas and its panels: the user fixes the frames and codes by hand.
+func open_panel_editor() -> void:
+	var path: String = app.settings.s("tex_source")
+	if app.last_rt.is_empty():
+		app._set_status("Najpierw zbuduj model – kody paneli zależą od wymiarów budynku.")
+		return
+	if path == "" or not FileAccess.file_exists(path) or path.get_extension().to_lower() == "json":
+		app._set_status("Najpierw wskaż płótno od GPT (obraz PNG/JPG) w polu „Płótno od GPT”.")
+		return
+	if path.get_basename().ends_with("_arkusz"):
+		app._set_status("To jest już ułożony arkusz. Wskaż oryginalne płótno od GPT.")
+		return
+	var img := Image.load_from_file(path)
+	if img == null or img.is_empty():
+		app._set_status("Nie udało się wczytać obrazu.")
+		return
+	var sig := PanelSheet.signature(path)
+	var panels := PanelSheet.panels_from_json(app.settings.s("tex_panels"), sig)
+	if panels.is_empty():
+		panels = PanelSheet.detect_and_assign(img, app.gpt.gpt_info())
+	var win := Window.new()
+	win.title = "Panele płótna od GPT"
+	var scr := Vector2(app.get_viewport().get_visible_rect().size)
+	win.size = Vector2i(int(clampf(scr.x * 0.85, 900.0, 1500.0)), int(clampf(scr.y * 0.85, 560.0, 900.0)))
+	win.transient = true
+	var bg := PanelContainer.new()
+	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	win.add_child(bg)
+	var m := MarginContainer.new()
+	for sname in ["margin_left", "margin_right", "margin_top", "margin_bottom"]:
+		m.add_theme_constant_override(sname, 12)
+	bg.add_child(m)
+	var ed := PanelEditor.new()
+	m.add_child(ed)
+	ed.setup(app, path, panels)
+	ed.finished.connect(func(saved: bool) -> void:
+		if saved:
+			_store_panels(sig, ed.panels, false)
+			_load_atlas(app.settings.s("tex_source"), true, true)
+			if app.project.is_open():
+				app.projflow._save_project()
+		win.queue_free())
+	win.close_requested.connect(win.queue_free)
+	app.add_child(win)
+	win.popup_centered()
+
+
 ## The texture source changed: the old drop-down choices point at regions that no longer exist,
 ## so they are all reset to "automatic" before the new regions are listed.
 func _on_texture_source_changed(force_slice := false) -> void:
@@ -61,15 +168,15 @@ func _on_texture_source_changed(force_slice := false) -> void:
 ## library end up in the same TextureAtlas, so every drop-down below offers both.
 func _load_atlas(path: String, rebuild: bool, force_slice := false) -> void:
 	var tag_note := ""
-	if path != "":
-		var tagged := TagSheet.normalize(path, SheetLayout.from_json(app.settings.s("tex_sheet_layout")))
-		if str(tagged["path"]) != "":
-			path = str(tagged["path"])    # the sheet was drawn with colour tags: cut by them and laid out by the program
+	if path != "" and not app.last_rt.is_empty():
+		var norm := _normalize_panels(path)
+		if not norm.is_empty():
+			path = str(norm["path"])        # the canvas has red frames: the program cut and laid the pictures out itself
 			force_slice = true
-			tag_note = "Arkusz z ramkami-tagami: znaleziono %s" % ", ".join(tagged["found"])
-			if not (tagged["missing"] as Array).is_empty():
-				tag_note += "; BRAK: " + ", ".join(tagged["missing"])
-			for n in tagged["notes"]:
+			tag_note = "Płótno od GPT: %d paneli" % (norm["found"] as Array).size()
+			if not (norm["missing"] as Array).is_empty():
+				tag_note += ", brak: " + ", ".join(norm["missing"])
+			for n in norm["notes"]:
 				tag_note += "; " + str(n)
 			if app.project.is_open():
 				app.project.log_event(tag_note)

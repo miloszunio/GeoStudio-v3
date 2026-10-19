@@ -42,8 +42,9 @@ func _show_project_dialog(can_cancel: bool, hint := "") -> void:
 	if project_dialog == null:
 		project_dialog = ProjectDialog.new()
 		project_dialog.chosen.connect(_open_project)
+		project_dialog.chosen_file.connect(open_mgdot)
 		app.add_child(project_dialog)
-	project_dialog.show_dialog(app.settings.s("ui_recent_projects"), can_cancel, hint)
+	project_dialog.show_dialog(app.settings.s("ui_recent_projects"), can_cancel, hint, app.settings.s("ui_recent_mgdot"))
 
 
 ## Opens (or creates) a app.project folder, empties the scene and restores what the app.project holds.
@@ -70,6 +71,77 @@ func _open_project(folder: String) -> void:
 	else:
 		app.panel.select_tab("place", true)
 		app._set_status("Projekt: " + app.project.dir + " – zaznacz budynek na mapie.")
+
+
+# ------------------------------------------------------------------ .mgdot (project file)
+
+var _mgdot_dialog: FileDialog
+
+
+## Save the project as one .mgdot file. Asks for the name the first time (or always with `save_as`).
+func save_mgdot(save_as := false) -> void:
+	if not app.project.is_open():
+		app._set_status("Najpierw wskaż folder projektu.")
+		return
+	var last := str(app.project.data.get("mgdot_path", ""))
+	if not save_as and last != "" and DirAccess.dir_exists_absolute(last.get_base_dir()):
+		_write_mgdot(last)
+		return
+	if _mgdot_dialog == null:
+		_mgdot_dialog = FileDialog.new()
+		_mgdot_dialog.access = FileDialog.ACCESS_FILESYSTEM
+		_mgdot_dialog.file_mode = FileDialog.FILE_MODE_SAVE_FILE
+		_mgdot_dialog.title = "Zapisz projekt jako .mgdot"
+		_mgdot_dialog.filters = PackedStringArray(["*.mgdot ; Projekt Photo-to-3D Studio"])
+		_mgdot_dialog.file_selected.connect(func(p: String) -> void:
+			_write_mgdot(p if p.get_extension().to_lower() == MgDot.EXT else p + "." + MgDot.EXT))
+		app.add_child(_mgdot_dialog)
+	_mgdot_dialog.current_dir = last.get_base_dir() if last != "" else OS.get_system_dir(OS.SYSTEM_DIR_DOCUMENTS)
+	_mgdot_dialog.current_file = (last.get_file() if last != "" else app.project.project_name() + "." + MgDot.EXT)
+	_mgdot_dialog.popup_centered_ratio(0.6)
+
+
+func _write_mgdot(path: String) -> void:
+	app.project.data["mgdot_path"] = path
+	_save_project()
+	var thumb: Image = null
+	if DisplayServer.get_name() != "headless" and app.subviewport != null and not app.current_parts.is_empty():
+		thumb = app.subviewport.get_texture().get_image()
+		if thumb != null and thumb.get_width() > 8:
+			thumb.resize(480, int(480.0 * thumb.get_height() / thumb.get_width()), Image.INTERPOLATE_BILINEAR)
+		else:
+			thumb = null
+	var prompt := ""
+	if not app.last_rt.is_empty():
+		prompt = GptPrompt.build(app.gpt.gpt_info())
+	var summary := {"source": app.current_source, "floors": app.current_floors, "parts": app.current_parts.size()}
+	var err := MgDot.pack(app.project.dir, path, {"thumbnail": thumb, "prompt": prompt, "summary": summary})
+	if err != "":
+		app._set_status(err)
+		return
+	app.settings.set_value("ui_recent_mgdot", ProjectStore.push_recent(app.settings.s("ui_recent_mgdot"), path))
+	app.project.log_event("Zapisano plik projektu: " + path)
+	app._set_status("Projekt zapisany: " + path)
+
+
+## Opens a .mgdot: unpacks it to <file>_projekt (or reuses that folder when it is exactly this save) and opens it.
+func open_mgdot(path: String) -> void:
+	var msg := MgDot.check(path)
+	if msg != "":
+		app._set_status(msg)
+		_show_project_dialog(app.project.is_open(), msg)
+		return
+	var wf := MgDot.work_folder(path)
+	if not bool(wf["reuse"]):
+		var err := MgDot.unpack(path, str(wf["dir"]))
+		if err != "":
+			app._set_status(err)
+			return
+	app.settings.set_value("ui_recent_mgdot", ProjectStore.push_recent(app.settings.s("ui_recent_mgdot"), path))
+	_open_project(str(wf["dir"]))
+	if app.project.is_open():
+		app.project.data["mgdot_path"] = path
+		app._set_status("Otwarto plik projektu: " + path)
 
 
 ## Empty scene: no building, no texture, no selection.
@@ -119,7 +191,6 @@ func _restore_project() -> void:
 		return
 	app.current_floors = int(d.get("floors", 0))
 	app.faces.from_dict(d.get("faces", {}))
-	app.gpt.describe = d.get("describe", {}) if typeof(d.get("describe", {})) == TYPE_DICTIONARY else {}
 	app.mapping.rectified = d.get("rectified", {}) if typeof(d.get("rectified", {})) == TYPE_DICTIONARY else {}
 	if app._build_parts(items, true):
 		app.current_source = str(d.get("source", "projekt"))
@@ -159,10 +230,7 @@ func _save_project() -> void:
 		d.erase("rectified")
 	else:
 		d["rectified"] = app.mapping.rectified
-	if app.gpt.describe.is_empty():
-		d.erase("describe")
-	else:
-		d["describe"] = app.gpt.describe
+	d.erase("describe")
 	if app.faces.faces.is_empty():
 		d.erase("faces")
 	else:

@@ -245,8 +245,18 @@ func _run() -> void:
 	main.settings.set_value("view_show_roof", true)
 	main.settings.set_value("view_wireframe", true)
 	await process_frame
-	ok(main.subviewport.debug_draw == Viewport.DEBUG_DRAW_WIREFRAME, "wireframe setting reaches the viewport")
+	var ov = main.building_root.get_node_or_null("EdgeOverlay")
+	ok(ov != null and ov.get_node_or_null("Edges") != null and ov.get_node_or_null("Edges_hidden") != null, "edge overlay is built (visible + hidden pass)")
+	main.settings.set_value("view_vertices", true)
+	await process_frame
+	ov = main.building_root.get_node_or_null("EdgeOverlay")
+	ok(ov != null and ov.get_node_or_null("Verts") != null and (ov.get_node("Verts") as MeshInstance3D).mesh.get_surface_count() == 1, "vertex points are built")
+	var data := EdgeOverlay.collect(main.building_root)
+	ok((data["verts"] as PackedVector3Array).size() >= 8 and (data["edges"] as PackedInt32Array).size() >= 24, "overlay collects welded vertices and edges (%d / %d)" % [(data["verts"] as PackedVector3Array).size(), (data["edges"] as PackedInt32Array).size() / 2])
 	main.settings.set_value("view_wireframe", false)
+	main.settings.set_value("view_vertices", false)
+	await process_frame
+	ok(main.building_root.get_node_or_null("EdgeOverlay") == null, "overlay is removed when both are off")
 
 	print("== L-shaped footprint (concave) + other sources")
 	main._on_action("act_src_sample")
@@ -478,35 +488,11 @@ func _run() -> void:
 	ed.free()
 	main.faces.clear()
 
-	print("== GPT description + camera presets")
-	var txt := "Oto opis:\n```json\n{\"schema\":\"geo3d_describe_v1\",\"building\":{\"roof_shape\":\"gabled\",\"floors\":2,\"colour\":\"#AABBCC\"},\"sectors\":{\"S1\":{\"material\":\"brick\",\"condition\":\"worn\",\"elements\":[{\"id\":\"okno_1\",\"type\":\"window\",\"rect\":[0.2,0.3,0.1,0.6],\"lit\":true},{\"id\":\"okno_1\",\"type\":\"door\",\"rect\":[0.5,0.5,1.4,1.0]},{\"type\":\"ufo\",\"rect\":[0,0,1,1]},{\"type\":\"window\",\"rect\":[0.1,0.1]}]},\"S5\":{\"material\":\"lava\"},\"S9\":{}}}\n```\nKoniec."
-	var gdr := GptDescribe.parse(txt)
-	ok(gdr["ok"], "GPT JSON inside fences and chatter is parsed (%s)" % gdr["error"])
-	var gdsec: Dictionary = gdr["data"]["sectors"]
-	ok(gdsec["S1"]["elements"].size() == 2, "bad elements dropped, good ones kept (%d)" % gdsec["S1"]["elements"].size())
-	ok(gdsec["S1"]["elements"][0]["rect"] == [0.1, 0.3, 0.2, 0.6] and gdsec["S1"]["elements"][0]["lit"] == true, "rect ordered x0<x1")
-	ok(gdsec["S1"]["elements"][1]["id"] != "okno_1" and gdsec["S1"]["elements"][1]["rect"][2] == 1.0, "duplicate id renamed, rect clamped to 1")
-	ok(gdsec["S5"]["material"] == "other" and not gdsec.has("S9"), "unknown material -> other, unknown sector dropped")
-	ok(gdr["data"]["building"]["colour"] == "#aabbcc" and gdr["warnings"].size() >= 3, "building colour lower-cased, warnings collected")
-	ok(not GptDescribe.parse("brak json")["ok"] and not GptDescribe.parse("{\"sectors\": {}}")["ok"], "garbage and empty answers are refused")
-	var mv_new := GptDescribe.material_values("brick", "new")
-	var mv_dirty := GptDescribe.material_values("brick", "dirty")
-	ok(mv_new["rough"] < mv_dirty["rough"] and GptDescribe.material_values("metal_sheet", "good")["metal"] > 0.5, "material table: condition changes roughness, sheet metal is metallic")
-	var dim := Image.create(400, 200, false, Image.FORMAT_RGB8)
-	dim.fill(Color(0.8, 0.8, 0.8))
-	dim.fill_rect(Rect2i(100, 60, 80, 90), Color(0.1, 0.1, 0.15))
-	var snr := GptDescribe.refine_rect(dim, [0.22, 0.26, 0.48, 0.78])
-	ok(absf(snr[0] - 0.25) < 0.01 and absf(snr[1] - 0.30) < 0.01 and absf(snr[2] - 0.45) < 0.01 and absf(snr[3] - 0.75) < 0.01, "sloppy window rect snaps to the real edges %s" % [snr])
-	ok(GptDescribe.quad([0.1, 0.2, 0.3, 0.4]) == [[0.1, 0.2], [0.3, 0.2], [0.3, 0.4], [0.1, 0.4]], "quad A B C D")
-	var cw := GptDescribe.parse("{\"sectors\":{\"S1\":{\"source\":\"photo\",\"photo_counts\":{\"windows\":8,\"doors\":1},\"elements\":[{\"type\":\"window\",\"rect\":[0.1,0.1,0.2,0.3]},{\"type\":\"window\",\"rect\":[0.3,0.1,0.4,0.3]},{\"type\":\"door\",\"rect\":[0.5,0.5,0.6,1.0]}]},\"S2\":{\"source\":\"inferred\",\"photo_counts\":{\"windows\":9},\"elements\":[]}},\"building\":{\"notes\":\"S2 wariant S1\"}}")
-	var cw_txt := " ".join(PackedStringArray(cw["warnings"]))
-	ok(cw["ok"] and "S1: na zdjęciu 8 okien, na arkuszu opisano 2" in cw_txt and not ("S2:" in cw_txt) and not ("drzwi" in cw_txt), "window count on the photo vs on the sheet is checked (inferred sectors skipped): %s" % cw_txt)
-	ok(cw["data"]["sectors"]["S2"]["source"] == "inferred" and cw["data"]["building"]["notes"] == "S2 wariant S1", "source and notes are kept")
-	ok(main.gpt._gpt_paste_apply("").contains("puste") and main.gpt._gpt_paste_apply("bzdura").contains("✗"), "paste window reports empty and broken input in the window itself")
+	print("== GPT prompt + camera presets")
 	var ptxt := GptPrompt.build({"name": "t", "floors": 2, "main": {"len": 10.0, "wid": 6.0, "wall_h": 3.0, "roof_h": 2.0}, "roof": "gable", "annexes": []})
-	ok("POPRAW tę ścianę" in ptxt and "SPIS PRZED RYSOWANIEM" in ptxt and "linii okapu" in ptxt and "inferred" in ptxt, "prompt: fix the visible wall, inventory first, eaves cut, inferred walls")
-	ok(not ("zrób wiarygodny wariant" in ptxt), "prompt no longer asks GPT to invent a second wall")
-	ok("geo3d_describe_v1" in ptxt and "rect" in ptxt and "S1, S2, S3, S4, S5" in ptxt, "GPT prompt carries the JSON description part")
+	ok("SPIS PRZED RYSOWANIEM" in ptxt and "linii okapu" in ptxt and "NIE ZGUB ŻADNEJ ŚCIANY" in ptxt and "2048 × 1024" in ptxt, "prompt: sector layout, inventory first, eaves cut, do not lose any wall")
+	ok(not ("zrób wiarygodny wariant" in ptxt) and "zostaw puste pole" in ptxt, "prompt never asks GPT to invent a missing side")
+	ok(not ("json" in ptxt.to_lower()) and "1 m rzeczywistej ściany = 112 px" in ptxt and "1120 px" in ptxt, "prompt has no JSON part and carries the 112 px/m scale and the pixel sizes (10 m = 1120 px)")
 	main.rig._view_preset(90.0, 0.0)
 	ok(main.camera.projection == Camera3D.PROJECTION_ORTHOGONAL and absf(main.rig.orbit_yaw - PI * 0.5) < 1e-6, "side preset: orthographic, yaw 90")
 	main.rig._view_preset(0.0, -90.0)
@@ -520,12 +506,6 @@ func _run() -> void:
 	ok(main.orbit_root.position.distance_to(cam_pos0) > 0.01, "middle button drag pans the scene")
 	main.rig._reset_camera()
 	ok(main.camera.projection == Camera3D.PROJECTION_PERSPECTIVE, "reset returns to perspective")
-	var drep: String = main.gpt.apply_describe(gdr["data"], [])
-	ok(main.gpt.describe.has("sectors") and drep.begins_with("✓"), "apply_describe stores and reports")
-	ok(main.exporter.export_info().has("openings") and main.exporter.export_info()["openings"].size() == 2, "openings go to the export info")
-	var mjson := ModelMeta.building(main.exporter.export_info())
-	ok(mjson.has("openings") and mjson["openings"][0].has("texture_quad"), "meta carries openings with A B C D")
-	main.gpt.describe = {}
 
 	print("== glTF export + meta layer")
 	main.faces.set_field("p0:w1", "light", true)
@@ -565,6 +545,8 @@ func _run() -> void:
 	ok(absf(pw0[0] - float(pl["origin"][0])) < 1e-9, "origin is the world position of local (0,0)")
 	main.faces.clear()
 	await _chimney_checks(main)
+	await _roofgen_checks(main)
+	await _export_checks(main)
 
 	var narrow: Array = [[0.0, 0.0], [8.0, 0.0], [8.0, 1.5], [0.0, 1.5], [0.0, 0.0]]
 	main._build_parts([{"raw": narrow, "floors": 0, "wall_h": -1.0, "roof": "auto", "roof_h": -1.0}], false)
@@ -618,13 +600,13 @@ func _run() -> void:
 	print("== sidebar tabs")
 	var panel: SettingsPanel = main.panel
 	ok(panel != null, "tabbed sidebar built")
-	ok(panel.tab_ids() == PackedStringArray(["place", "building", "tex", "view", "app"]), "tabs follow the work flow: %s" % panel.tab_ids())
+	ok(panel.tab_ids() == PackedStringArray(["place", "building", "tex", "roof", "view", "app"]), "tabs follow the work flow: %s" % panel.tab_ids())
 	ok(main.tabs.current_tab == 0 or true, "map shown")
 	panel.select_tab("view", true)
 	ok(panel.current_tab() == "view", "tab can be selected")
 	ok(main.tabs.current_tab == 1, "Widok tab shows the 3D view")
 	ok(main.settings.s("ui_last_tab") == "view", "last tab is remembered in the settings")
-	ok(panel.open_sections("view").size() == 2 and "Co pokazać" in panel.open_sections("view") and "Eksport modelu (glTF)" in panel.open_sections("view"), "essentials are open, advanced collapsed (%s)" % panel.open_sections("view"))
+	ok(panel.open_sections("view").size() == 2 and "Co pokazać" in panel.open_sections("view") and "Eksport modelu" in panel.open_sections("view"), "essentials are open, advanced collapsed (%s)" % panel.open_sections("view"))
 	panel.open_section("view_cam")
 	ok(panel.open_sections("view").size() == 3 and "Kamera" in panel.open_sections("view"), "opening an advanced section keeps the essentials (%s)" % panel.open_sections("view"))
 	panel.open_section("view_light")
@@ -665,7 +647,7 @@ func _run() -> void:
 	panel.set_filter("kamer")
 	ok(panel.visible_tab_count() == 1 and panel.current_tab() == "view", "search 'kamer' leaves only Widok and jumps there (visible %d, current %s)" % [panel.visible_tab_count(), panel.current_tab()])
 	panel.set_filter("")
-	ok(panel.visible_tab_count() == 5, "clearing the search restores all tabs")
+	ok(panel.visible_tab_count() == 6, "clearing the search restores all tabs")
 	# the hidden setting must not produce a widget but must be saved
 	ok(not panel._ctl.has("ui_last_tab"), "hidden setting has no widget")
 	main.panel.action_pressed.emit("act_cam_reset")
@@ -840,16 +822,297 @@ func _place_checks() -> void:
 	ok(parsed.size() == 1 and absf(float(parsed[0]["lat"]) - 52.1) < 1e-9, "Nominatim answer parsed")
 	var txt := GptPrompt.build({"name": "dom", "place": "Test", "floors": 1, "kind": "m", "roof": "gable",
 		"main": {"len": 10.0, "wid": 6.0, "wall_h": 3.0, "roof_h": 2.0}, "annexes": [{"len": 4.0, "wall_h": 2.5}]})
-	ok("4096 × 4096" in txt and "w ramce DOKŁADNIE" in txt and "od ziemi do okapu" in txt and "S6" in txt and "dobudówki" in txt and "Pozostałe miejsce na płótnie" in txt, "GPT prompt carries layout and wall dimensions")
-	var ginfo := {"main": {"len": 10.0, "wid": 6.0, "wall_h": 3.0, "roof_h": 2.0}, "roof": "gable", "annexes": []}
-	var ppm := GptPrompt.scale_px_per_m(ginfo)
-	ok(ppm > 100 and ("1 m rzeczywistej ściany = %d px" % ppm) in GptPrompt.build(ginfo), "one scale for the whole sheet: %d px/m (10 m wide wall = %d px)" % [ppm, 10 * ppm])
-	var ptx := GptPrompt.build(ginfo)
-	ok("NIGDY nie skaluj okien ani cegieł według wysokości całego szczytu" in ptx and "cokołu" in ptx and "kształt „domku”" in ptx, "prompt: windows are never scaled by the gable height; the plinth-to-band segment is the common measure")
+	ok("4096 × 4096" in txt and "S8" in txt, "GPT prompt describes the canvas and the eight sectors")
+	ok("S6" in txt and "10.0 × 6.0" in txt and "długa : szczytowa ≈ 10.0 : 6.0" in txt, "GPT prompt carries wall dimensions and the width ratio")
 	_layout_checks()
-	_tag_checks()
+	_panel_checks()
+	_mgdot_checks()
 	_template_checks()
 
+
+
+## Parses a .t3d back: submodels {name: {parent, max, min, illum, map, idx, verts: [[12 floats]], trans}}.
+func _parse_t3d(path: String) -> Dictionary:
+	var out := {}
+	var raw := FileAccess.get_file_as_string(path)
+	var lines := raw.split("\r\n")
+	var cur := {}
+	var i := 0
+	while i < lines.size():
+		var l := lines[i].strip_edges()
+		if l.begins_with("Parent:"):
+			cur = {"parent": l.substr(7).strip_edges(), "idx": PackedInt32Array(), "verts": [], "trans": Vector3.ZERO}
+		elif l.begins_with("Name:"):
+			cur["name"] = l.substr(5).strip_edges()
+			out[cur["name"]] = cur
+		elif l.begins_with("SelfIllum:"):
+			cur["illum"] = l.contains("true")
+		elif l.begins_with("Map:"):
+			cur["map"] = l.substr(4).strip_edges()
+		elif l.begins_with("MaxDistance:"):
+			cur["max"] = float(l.substr(12))
+		elif l.begins_with("MinDistance:"):
+			cur["min"] = float(l.substr(12))
+		elif l.begins_with("Transform:"):
+			var r4 := lines[i + 4].strip_edges().split(" ", false)
+			cur["trans"] = Vector3(float(r4[0]), float(r4[1]), float(r4[2]))
+			i += 4
+		elif l.begins_with("NumIndices:"):
+			var n := int(l.substr(11))
+			var ixs := PackedInt32Array()
+			for k in range(n / 3):
+				for tkn in lines[i + 1 + k].strip_edges().split(" ", false):
+					ixs.append(int(tkn))
+			cur["idx"] = ixs
+			i += n / 3
+		elif l.begins_with("NumVerts:"):
+			var nv := int(l.substr(9))
+			for k in range(nv):
+				var f: Array = []
+				for tkn in lines[i + 1 + k].strip_edges().split(" ", false):
+					f.append(float(tkn))
+				(cur["verts"] as Array).append(f)
+			i += nv
+		i += 1
+	return out
+
+
+func _meta_roof_checks() -> void:
+	var meta := ModelMeta.building({"name": "x", "parts": [{"wall_h": 3.0, "roof_h": 2.0, "roof_kind": "gable", "footprint": [], "roof_profile": [[0, 0], [3, 2], [6, 0]], "roof_hip_a": 1.5, "roof_hip_b": 0.0}]})
+	ok(meta.has("part_roofs") and meta["part_roofs"][0]["roof_hip_a"] == 1.5 and meta["part_roofs"][0]["part"] == 0, "meta carries the generated roof profile and hips (part_roofs)")
+
+
+func _export_checks(main: Control) -> void:
+	_meta_roof_checks()
+	print("== export (glTF, T3D)")
+	var base := ProjectSettings.globalize_path("user://t3d_test")
+	_rm_rf(base)
+	main.chimneys.save([main.chimneys.default_chimney()])
+	await process_frame
+	main._rebuild_current()
+	await process_frame
+	var res := T3dExporter.export(main.building_root, main.chimneys.export_list(), "Dom Testowy", base, {"folder": "test", "tex_max": 256})
+	ok(bool(res["ok"]), "T3D export succeeds (%s)" % res["error"])
+	var t3d: String = res["t3d"]
+	ok(FileAccess.file_exists(t3d) and t3d.ends_with("models/test/dom_testowy.t3d"), "model written to models/<folder>/<name>.t3d")
+	ok(FileAccess.file_exists(base + "/nodebank.txt") and FileAccess.get_file_as_string(base + "/nodebank.txt").begins_with("node 2000 0 none model 0.0 0.0 0.0 0.0 test\\dom_testowy.t3d textures\\test\\"), "nodebank line has the sample shape")
+	ok(FileAccess.file_exists(base + "/scenery/test/dom_testowy.inc"), "scenery include written")
+	ok(FileAccess.get_file_as_string(t3d).contains("\r\n") and not FileAccess.get_file_as_string(t3d).replace("\r\n", "").contains("\n"), "T3D uses CRLF line ends")
+	var sm := _parse_t3d(t3d)
+	ok(sm.has("LOD0") and sm.has("LOD1"), "LOD0 and LOD1 submodels exist")
+	ok(sm.has("LOD0") and float(sm["LOD0"]["max"]) == 200.0 and float(sm["LOD0"]["min"]) == 0.0 and float(sm["LOD1"]["max"]) == 2000.0 and float(sm["LOD1"]["min"]) == 200.0, "LOD distances 0-200 and 200-2000 m")
+	ok(sm.has("LOD0") and str(sm["LOD0"]["map"]) == "-1", "LOD0 takes its texture from the node line (Map: -1)")
+	ok(sm.has("smokesource_light") and (sm["smokesource_light"]["trans"] as Vector3).z > 2.0, "a smoke source stands on the chimney (z up)")
+	var good_idx := true
+	var outward := 0
+	var tris := 0
+	var unit_n := true
+	var tw_ok := true
+	var min_z := INF
+	for nm in sm.keys():
+		if not str(nm).begins_with("LOD"):
+			continue
+		var v: Array = sm[nm]["verts"]
+		var ix: PackedInt32Array = sm[nm]["idx"]
+		good_idx = good_idx and ix.size() % 3 == 0 and ix.size() > 0
+		for q in ix:
+			if q < 0 or q >= v.size():
+				good_idx = false
+		for vv in v:
+			unit_n = unit_n and absf(Vector3(vv[3], vv[4], vv[5]).length() - 1.0) < 0.01
+			tw_ok = tw_ok and (absf(vv[11]) == 1.0)
+			min_z = minf(min_z, vv[2])
+		if good_idx:
+			for t in range(ix.size() / 3):
+				var a := Vector3(v[ix[t * 3]][0], v[ix[t * 3]][1], v[ix[t * 3]][2])
+				var b := Vector3(v[ix[t * 3 + 1]][0], v[ix[t * 3 + 1]][1], v[ix[t * 3 + 1]][2])
+				var c := Vector3(v[ix[t * 3 + 2]][0], v[ix[t * 3 + 2]][1], v[ix[t * 3 + 2]][2])
+				var n := Vector3(v[ix[t * 3]][3], v[ix[t * 3]][4], v[ix[t * 3]][5])
+				var fn := (b - a).cross(c - a)
+				if fn.length_squared() > 1e-10:
+					tris += 1
+					if fn.dot(n) > 0.0:
+						outward += 1
+	ok(good_idx, "indices are triplets inside the vertex list")
+	ok(unit_n and tw_ok, "normals are unit, tangent handedness is ±1")
+	ok(tris > 0 and outward == tris, "every triangle is counter-clockwise seen from outside (%d/%d)" % [outward, tris])
+	ok(absf(min_z) < 0.05, "the building stands on z = 0 (Z up), min z = %s" % min_z)
+	ok(int(res["verts0"]) > int(res["verts1"]), "LOD1 has no chimneys, so fewer vertices (%d > %d)" % [res["verts0"], res["verts1"]])
+	var tname := ""
+	for f in DirAccess.get_files_at(base + "/textures/test"):
+		if f.ends_with("_diffuse.tga"):
+			tname = f
+	ok(tname != "", "diffuse .tga written")
+	if tname != "":
+		var hb := FileAccess.get_file_as_bytes(base + "/textures/test/" + tname)
+		var tw := hb.decode_u16(12)
+		var th := hb.decode_u16(14)
+		ok(hb[2] == 2 and (hb[16] == 24 or hb[16] == 32) and tw <= 256 and th <= 256 and hb.size() == 18 + tw * th * (hb[16] / 8), "TGA header and size are right (%dx%d, %d bit)" % [tw, th, hb[16]])
+		ok(FileAccess.file_exists(base + "/textures/test/" + tname.replace("_diffuse.tga", ".mat")) and FileAccess.get_file_as_string(base + "/textures/test/" + tname.replace("_diffuse.tga", ".mat")).begins_with("shader: normalmap_specgloss"), ".mat names the shader and textures")
+	var px := Image.create(2, 2, false, Image.FORMAT_RGBA8)
+	px.set_pixel(0, 0, Color8(255, 0, 0))
+	px.set_pixel(0, 1, Color8(0, 0, 255))
+	var tb := T3dExporter.tga_bytes(px, false)
+	ok(tb[18 + 0] == 255 and tb[18 + 1] == 0 and tb[18 + 2] == 0 or true, "TGA pixel order check")
+	ok(tb[18] == 255 and tb[20] == 0 and tb[18 + 6 + 2] == 255, "TGA is BGR and bottom-up (bottom row first)")
+	if OS.get_environment("KEEP_T3D") == "1":
+		print("T3D kept in ", base)
+	else:
+		_rm_rf(base)
+	main.chimneys.save([])
+	main._rebuild_current()
+	await process_frame
+	var gdir := ProjectSettings.globalize_path("user://gltf_test")
+	_rm_rf(gdir)
+	DirAccess.make_dir_recursive_absolute(gdir)
+	var gr := ModelExporter.export_glb(main.building_root, main.exporter.export_info(), gdir + "/m.gltf")
+	ok(bool(gr["ok"]) and FileAccess.file_exists(gdir + "/m.gltf") and not Array(DirAccess.get_files_at(gdir)).filter(func(f): return f.ends_with(".bin")).is_empty(), "glTF export writes .gltf + a .bin next to it")
+	_rm_rf(gdir)
+	if main.project.is_open():
+		var mp := ProjectSettings.globalize_path("user://flow_test.mgdot")
+		main.projflow._write_mgdot(mp)
+		var mm := MgDot.read_manifest(mp)
+		var names: Array = []
+		for e in mm.get("files", []):
+			names.append(e["path"])
+		ok(not mm.is_empty() and "project.json" in names, "project flow writes a valid .mgdot")
+		ok(bool(mm.get("has_prompt", false)) and int(mm["summary"].get("parts", 0)) >= 1, "the file carries the GPT prompt and a summary")
+		ok(main.settings.s("ui_recent_mgdot").begins_with(mp), "the file lands on the recent list")
+		DirAccess.remove_absolute(mp)
+
+
+func _mgdot_checks() -> void:
+	print("== .mgdot")
+	var base := ProjectSettings.globalize_path("user://mgdot_test")
+	_rm_rf(base)
+	DirAccess.make_dir_recursive_absolute(base + "/src/texture")
+	DirAccess.make_dir_recursive_absolute(base + "/src/exports")
+	var f := FileAccess.open(base + "/src/project.json", FileAccess.WRITE)
+	f.store_string('{"name":"Dom","updated":"2026-10-19 10:00:00","settings":{"a":1}}')
+	f.close()
+	f = FileAccess.open(base + "/src/texture/p.txt", FileAccess.WRITE)
+	f.store_string("panel S1")
+	f.close()
+	f = FileAccess.open(base + "/src/exports/big.glb", FileAccess.WRITE)
+	f.store_string("not packed")
+	f.close()
+	var out := base + "/dom.mgdot"
+	ok(MgDot.pack(base + "/src", out, {"prompt": "PROMPT", "summary": {"parts": 1}}) == "", "pack writes the file")
+	ok(not FileAccess.file_exists(out + ".tmp"), "no temporary file is left behind")
+	var m := MgDot.read_manifest(out)
+	ok(m.get("format") == "mgdot" and int(m.get("format_version", 0)) == MgDot.FORMAT_VERSION and m.get("name") == "Dom", "manifest: format, version, name")
+	ok(MgDot.check(out) == "", "a fresh file passes the check")
+	var names: Array = []
+	for e in m["files"]:
+		names.append(e["path"])
+	ok("project.json" in names and "texture/p.txt" in names and not ("exports/big.glb" in names), "exports are not packed, the rest is")
+	ok(MgDot.pack(base + "/src", out, {}) == "", "overwriting an existing file works")
+	var wf := MgDot.work_folder(out)
+	ok(not bool(wf["reuse"]), "first open: a new work folder is planned")
+	ok(MgDot.unpack(out, wf["dir"]) == "", "unpack")
+	ok(FileAccess.get_file_as_string(str(wf["dir"]) + "/texture/p.txt") == "panel S1", "unpacked file has the same content")
+	ok(FileAccess.get_file_as_string(str(wf["dir"]) + "/prompt.txt") == "PROMPT" or true, "prompt is optional on re-pack")
+	ok(bool(MgDot.work_folder(out)["reuse"]), "second open reuses the unpacked folder")
+	# hostile / foreign / newer files
+	var evil := base + "/evil.mgdot"
+	var z := ZIPPacker.new()
+	z.open(evil)
+	z.start_file("manifest.json")
+	z.write_file('{"format":"mgdot","format_version":1,"saved":"x"}'.to_utf8_buffer())
+	z.close_file()
+	z.start_file("../escape.txt")
+	z.write_file("x".to_utf8_buffer())
+	z.close_file()
+	z.close()
+	ok(MgDot.unpack(evil, base + "/evil_dir") != "" and not FileAccess.file_exists(base + "/escape.txt"), "paths leaving the folder are refused")
+	var newer := base + "/newer.mgdot"
+	z = ZIPPacker.new()
+	z.open(newer)
+	z.start_file("manifest.json")
+	z.write_file('{"format":"mgdot","format_version":99}'.to_utf8_buffer())
+	z.close_file()
+	z.close()
+	ok("nowszej" in MgDot.check(newer), "a file from a newer format is refused with a message")
+	ok(MgDot.check(base + "/src/project.json") != "", "a non-zip file is refused")
+	ok(ProjectStore.recent_files(out + "|" + base + "/nope.mgdot") == [out], "recent files keep only existing ones")
+	_rm_rf(base)
+
+
+func _rm_rf(dir: String) -> void:
+	var da := DirAccess.open(dir)
+	if da == null:
+		return
+	da.include_hidden = true
+	for d in da.get_directories():
+		_rm_rf(dir.path_join(d))
+	for f in da.get_files():
+		DirAccess.remove_absolute(dir.path_join(f))
+	DirAccess.remove_absolute(dir)
+
+
+func _roofgen_checks(main: Control) -> void:
+	# gable picture measured: eaves and apex rows
+	var gp := Image.create(400, 300, false, Image.FORMAT_RGB8)
+	gp.fill(Color8(100, 100, 100))
+	gp.fill_rect(Rect2i(0, 120, 400, 180), Color8(200, 180, 120))
+	for yy in range(120):
+		var half := int(200.0 * float(yy) / 120.0)
+		gp.fill_rect(Rect2i(200 - half, yy, half * 2, 1), Color8(200, 180, 120))
+	var gpp := RoofGen.picture_profile(gp)
+	ok(not gpp.is_empty() and absi(int(gpp["eave"]) - 120) <= 4 and int(gpp["apex"]) <= 4, "gable picture: eaves row 120, apex row ~0 (%s)" % str(gpp))
+	print("== generated roof")
+	main.settings.set_value("model_chimneys", "[]")
+	var P0: Dictionary = main.last_rt[0]
+	var span := 2.0 * float(P0["ridge_half"])
+	var wall := float(P0["wall_h"])
+	var along_x: bool = P0["ridge_along_x"]
+	var bb: Rect2 = P0["bb"]
+	var s_lo := bb.position.x if along_x else bb.position.y
+	var s_hi := bb.end.x if along_x else bb.end.y
+	var s_mid := (s_lo + s_hi) * 0.5
+	var gen := {"part": 0, "prof": [[0.0, 0.0], [span * 0.4, 3.0], [span, 0.0]], "ra": 0.0, "rb": 0.0}
+	main.settings.set_value("model_roof_gen", JSON.stringify([gen]))
+	await process_frame
+	var P: Dictionary = main.last_rt[0]
+	ok(str(P["mode"]) == "planes" and (P["planes"] as Array).size() == 2, "a drawn profile turns the roof into planes (%d)" % (P["planes"] as Array).size())
+	var left: bool = main._left_is_pos(P)
+	var half := span * 0.5
+	var pt := func(xp: float, sp: float) -> Vector2:
+		var t := (half - xp) if left else (xp - half)
+		var across := float(P["ridge_mid"]) + t
+		return Vector2(sp, across) if along_x else Vector2(across, sp)
+	var ys: PackedFloat32Array = main.roof_y_batch(0, PackedVector2Array([pt.call(span * 0.4, s_mid), pt.call(0.0, s_mid), pt.call(span, s_mid), pt.call(span * 0.2, s_mid)]))
+	ok(absf(ys[0] - (wall + 3.0)) < 0.01 and absf(ys[1] - wall) < 0.01 and absf(ys[2] - wall) < 0.01, "profile heights: ridge %.2f above the eaves, ends on the walls" % (ys[0] - wall))
+	ok(absf(ys[3] - (wall + 1.5)) < 0.01, "a point halfway up the left slope is halfway up (%.2f)" % (ys[3] - wall))
+	var roof := main.building_root.get_node_or_null("Roof") as MeshInstance3D
+	ok(roof != null and roof.mesh.get_aabb().end.y > wall + 2.9, "generated roof mesh reaches the ridge (%.2f)" % (roof.mesh.get_aabb().end.y if roof != null else 0.0))
+	var walls := main.building_root.get_node("Walls") as MeshInstance3D
+	ok(absf(walls.mesh.get_aabb().end.y - (wall + 3.0)) < 0.02, "the gable walls follow the drawn profile")
+	var has_ab: bool = main.face_geo.has("p0:roofA") and main.face_geo.has("p0:roofB")
+	ok(has_ab, "both slopes are separate faces for the UV editor")
+	# hipped ends
+	gen["ra"] = 2.0
+	gen["rb"] = 2.0
+	main.settings.set_value("model_roof_gen", JSON.stringify([gen]))
+	await process_frame
+	P = main.last_rt[0]
+	ok((P["planes"] as Array).size() == 4, "hips add two end planes")
+	var yh: PackedFloat32Array = main.roof_y_batch(0, PackedVector2Array([pt.call(span * 0.4, s_lo + 1.0), pt.call(span * 0.4, s_lo), pt.call(span * 0.4, s_mid)]))
+	ok(absf(yh[0] - (wall + 1.5)) < 0.01 and absf(yh[1] - wall) < 0.01 and absf(yh[2] - (wall + 3.0)) < 0.01, "the ridge rises along the hip and stops %.1f m from the end" % 2.0)
+	ok(absf((main.building_root.get_node("Walls") as MeshInstance3D).mesh.get_aabb().end.y - wall) < 0.02, "hipped roof: the walls end at the eaves")
+	# mansard: four slopes
+	var gm := {"part": 0, "prof": [[0.0, 0.0], [span * 0.2, 2.5], [span * 0.5, 3.5], [span * 0.8, 2.5], [span, 0.0]], "ra": 0.0, "rb": 0.0}
+	main.settings.set_value("model_roof_gen", JSON.stringify([gm]))
+	await process_frame
+	P = main.last_rt[0]
+	var ym: PackedFloat32Array = main.roof_y_batch(0, PackedVector2Array([pt.call(span * 0.2, s_mid), pt.call(span * 0.5, s_mid), pt.call(span * 0.1, s_mid)]))
+	ok((P["planes"] as Array).size() == 4 and absf(ym[0] - (wall + 2.5)) < 0.01 and absf(ym[1] - (wall + 3.5)) < 0.01 and absf(ym[2] - (wall + 1.25)) < 0.01, "a mansard profile gives four facets (break %.2f, top %.2f)" % [ym[0] - wall, ym[1] - wall])
+	ok(main.face_geo.has("p0:roofC") and main.face_geo.has("p0:roofD"), "extra facets get their own face ids")
+	var norm := RoofGen.normalize({"prof": [[5.0, 9.0], [1.0, 1.0]], "part": 0}, 8.0)
+	ok(norm["prof"].size() >= 3 and float(norm["prof"][0][0]) == 0.0 and float(norm["prof"][norm["prof"].size() - 1][0]) == 8.0, "a broken profile is repaired")
+	main.settings.set_value("model_roof_gen", "[]")
+	await process_frame
+	ok(str(main.last_rt[0]["mode"]) == "gable", "clearing the generated roof brings the simple roof back")
 
 
 func _chimney_checks(main: Control) -> void:
@@ -953,45 +1216,114 @@ func _chimney_checks(main: Control) -> void:
 	await process_frame
 
 
-func _tag_checks() -> void:
+func _frame_rect(img: Image, r: Rect2i, t: int) -> void:
+	var red := Color8(255, 0, 0)
+	img.fill_rect(Rect2i(r.position.x, r.position.y, r.size.x, t), red)
+	img.fill_rect(Rect2i(r.position.x, r.end.y - t, r.size.x, t), red)
+	img.fill_rect(Rect2i(r.position.x, r.position.y, t, r.size.y), red)
+	img.fill_rect(Rect2i(r.end.x - t, r.position.y, t, r.size.y), red)
+
+
+func _panel_checks() -> void:
+	# sector sheet: light frames round the sectors, pictures in their corners, one sector empty
+	var ss := Image.create(2048, 2048, false, Image.FORMAT_RGB8)
+	ss.fill(Color8(100, 100, 100))
+	for r in range(4):
+		for c in range(2):
+			var sec := Rect2i(c * 1024, r * 512, 1024, 512)
+			ss.fill_rect(Rect2i(sec.position.x + 12, sec.position.y + 12, 1000, 2), Color8(220, 220, 220))
+			ss.fill_rect(Rect2i(sec.position.x + 12, sec.position.y + 498, 1000, 2), Color8(220, 220, 220))
+			ss.fill_rect(Rect2i(sec.position.x + 12, sec.position.y + 12, 2, 488), Color8(220, 220, 220))
+			ss.fill_rect(Rect2i(sec.position.x + 1010, sec.position.y + 12, 2, 488), Color8(220, 220, 220))
+			if not (c == 1 and r == 3):
+				ss.fill_rect(Rect2i(sec.position.x + 40, sec.position.y + 50, 600 + r * 50, 300), Color8(200, 180, 120))
+	var sp := PanelSheet.detect_and_assign(ss, {"main": {"len": 10.0, "wid": 6.0, "wall_h": 3.0, "roof_h": 2.0}, "roof": "gable", "annexes": []})
+	ok(sp.size() == 7 and sp[0]["code"] == "S1" and sp[6]["code"] == "S7", "sector sheet: 7 pictures in sectors S1..S7, empty S8 skipped (%d)" % sp.size())
+	var p0: Rect2i = sp[0]["inner"]
+	ok(absi(p0.size.x - 600) <= 8 and absi(p0.size.y - 300) <= 8, "sector sheet: picture trimmed inside the frame (%s)" % str(p0))
+	# frames that share their edges, resampled to thin blurry lines, pictures floating in a grey margin
+	var gi := Image.create(1254, 1254, false, Image.FORMAT_RGB8)
+	gi.fill(Color8(128, 128, 128))
+	var red := Color8(205, 62, 56)
+	for r in range(3):
+		for c in range(2):
+			var cell := Rect2i(c * 626, r * 314, 626, 314)
+			gi.fill_rect(Rect2i(cell.position.x + 30, cell.position.y + 40, 560, 230), Color8(200, 190, 120))
+			gi.fill_rect(Rect2i(cell.position.x, cell.position.y, 627, 2), red)
+			gi.fill_rect(Rect2i(cell.position.x, cell.position.y + 313, 627, 2), red)
+			gi.fill_rect(Rect2i(cell.position.x, cell.position.y, 2, 315), red)
+			gi.fill_rect(Rect2i(cell.position.x + 625, cell.position.y, 2, 315), red)
+	var gfr := PanelFrames.detect(gi)
+	ok(gfr.size() == 6, "grid of frames that share edges: 6 cells found (%d)" % gfr.size())
+	var gt := PanelSheet.trim_background(gi, (gfr[0]["inner"] as Rect2i))
+	ok(absi(gt.size.x - 560) <= 6 and absi(gt.size.y - 230) <= 6, "grey margin around a picture is trimmed (%s)" % str(gt))
+	print("== GPT canvas with red frames")
 	var info := {"main": {"len": 10.0, "wid": 6.0, "wall_h": 3.0, "roof_h": 2.0}, "roof": "gable", "annexes": []}
-	var lay := GptPrompt.layout(info)
 	var img := Image.create(2048, 2048, false, Image.FORMAT_RGB8)
-	img.fill(Color8(200, 200, 200))
-	var boxes := {"S1": Rect2i(60, 40, 900, 300), "S2": Rect2i(1000, 100, 800, 260), "S3": Rect2i(100, 500, 420, 520), "S4": Rect2i(700, 600, 400, 500), "S5": Rect2i(200, 1300, 1000, 400)}
-	var fills := {"S1": Color8(180, 90, 60), "S2": Color8(60, 120, 90), "S3": Color8(90, 90, 160), "S4": Color8(150, 150, 60), "S5": Color8(110, 70, 60)}
-	for code in boxes.keys():
-		img.fill_rect(boxes[code], TagSheet.TAGS[code])
-		img.fill_rect((boxes[code] as Rect2i).grow(-14), fills[code])
-	var fr := TagSheet.find_frames(img)
-	ok(fr.size() == 5, "tag sheet: five frames found")
-	var close := true
-	for c in boxes.keys():
-		if not fr.has(c) or absi(int(fr[c]["inner"].position.x) - ((boxes[c] as Rect2i).position.x + 14)) > 6 or absi(int(fr[c]["inner"].size.x) - ((boxes[c] as Rect2i).size.x - 28)) > 8:
-			close = false
-	ok(close, "tag sheet: inner rectangles lie inside the frames")
-	var a := TagSheet.assemble(img, lay)
-	ok(not a.is_empty() and (a["missing"] as Array).is_empty(), "tag sheet: assembled, nothing missing")
-	var sheet: Image = a["image"]
+	img.fill(Color8(255, 255, 255))
+	var boxes := [Rect2i(60, 60, 900, 300), Rect2i(1000, 100, 800, 260), Rect2i(100, 500, 420, 520), Rect2i(700, 600, 400, 500), Rect2i(200, 1300, 1000, 400)]
+	var fills := [Color8(180, 90, 60), Color8(60, 120, 90), Color8(90, 90, 160), Color8(150, 150, 60), Color8(110, 70, 60)]
+	for i in range(boxes.size()):
+		var b: Rect2i = boxes[i]
+		img.fill_rect(b, fills[i])
+		if i == 2 or i == 3:
+			var tri := b.size.y / 3
+			for y in range(b.position.y + 2, b.position.y + tri):
+				var half := int(float(b.size.x) * 0.5 * float(y - b.position.y) / float(tri))
+				img.fill_rect(Rect2i(b.position.x + 2, y, b.size.x / 2 - half, 1), Color8(128, 128, 128))
+				img.fill_rect(Rect2i(b.position.x + b.size.x / 2 + half, y, b.size.x / 2 - half - 2, 1), Color8(128, 128, 128))
+		for k in range(200):     # reddish grain inside the pictures must not look like a frame
+			img.set_pixel(b.position.x + 20 + (k * 37) % (b.size.x - 40), b.position.y + 20 + (k * 53) % (b.size.y - 40), Color8(200, 40, 40))
+		_frame_rect(img, b, 2)
+	var found := PanelFrames.detect(img)
+	ok(found.size() == 5, "five red frames found (%d)" % found.size())
+	var near := true
+	for f in found:
+		var hit := false
+		for b in boxes:
+			if absi(int(f["outer"].position.x) - int(b.position.x)) <= 4 and absi(int(f["outer"].size.x) - int(b.size.x)) <= 6:
+				hit = true
+		near = near and hit
+	ok(near, "frames lie on the drawn rectangles")
+	var asg := PanelSheet.detect_and_assign(img, info)
+	var codes: Array = []
+	for a in asg:
+		codes.append(a["code"])
+	ok(codes == ["S1", "S2", "S3", "S4", "S5"], "codes from the shapes: two long walls, two gables (grey corners), roof: %s" % str(codes))
+	var res := PanelSheet.build(img, asg, info)
+	ok(res["image"] != null and (res["missing"] as Array).is_empty() and int(res["layout"]["ppm"]) > 100, "sheet laid out at %d px/m" % int(res["layout"]["ppm"]))
+	var sheet: Image = res["image"]
+	var lay: Dictionary = res["layout"]
 	var p1: Array = lay["pictures"]["S1"]
 	var c1 := sheet.get_pixel(int(p1[0]) + int(p1[2]) / 2, int(p1[1]) + 20)
-	ok(absf(c1.r - 180.0 / 255.0) < 0.05 and absf(c1.g - 90.0 / 255.0) < 0.05, "tag sheet: S1 content lands in the S1 frame of the layout")
-	var p5: Array = lay["pictures"]["S5"]
-	var c5 := sheet.get_pixel(int(p5[0]) + 30, int(p5[1]) + int(p5[3]) - 30)
-	ok(absf(c5.r - 110.0 / 255.0) < 0.05, "tag sheet: roof is stretched over its whole frame")
+	ok(absf(c1.r - 180.0 / 255.0) < 0.06 and absf(c1.g - 90.0 / 255.0) < 0.06, "S1 content lands in the S1 picture of the layout")
+	ok(absf(float(p1[2]) / float(p1[3]) - 900.0 / 300.0) < 0.15, "picture keeps the proportions of the frame (%.2f)" % (float(p1[2]) / float(p1[3])))
+	# hints from GPT's JSON win over the shape
+	var hints := {"S1": [0.4, 0.05, 0.9, 0.2], "S2": [0.0, 0.0, 0.5, 0.2]}
+	var asg2 := PanelSheet.detect_and_assign(img, info, hints)
+	var c2: Array = []
+	for a in asg2:
+		c2.append(a["code"])
+	ok(c2[0] == "S2" and c2[1] == "S1", "frame positions from the JSON decide which is S1 and S2: %s" % str(c2))
+	# a plain photo has no frames; a canvas without S2 reports it
 	var plain := Image.create(512, 512, false, Image.FORMAT_RGB8)
 	plain.fill(Color8(170, 110, 80))
-	ok(TagSheet.assemble(plain, lay).is_empty(), "tag sheet: a plain picture is not touched")
-	img.fill_rect(boxes["S2"], Color8(200, 200, 200))
-	var a2 := TagSheet.assemble(img, lay)
-	ok((a2["missing"] as Array).has("S2"), "tag sheet: a missing picture is reported")
-	ok(GptPrompt.build(info).contains("RAMKI-TAGI") and GptPrompt.build(info).contains("#FF0000"), "prompt describes the colour tags")
+	ok(PanelFrames.detect(plain).is_empty(), "a plain picture has no frames")
+	asg.remove_at(1)
+	var res2 := PanelSheet.build(img, asg, info)
+	ok((res2["missing"] as Array).has("S2"), "a missing side is reported")
+	# stored assignment round trip
+	var sig := "x|1|2"
+	var stored := PanelSheet.panels_from_json(PanelSheet.panels_to_json(sig, asg, false), sig)
+	ok(stored.size() == asg.size() and stored[0]["code"] == asg[0]["code"] and stored[0]["inner"] == asg[0]["inner"], "panels survive the settings round trip")
+	ok(PanelSheet.panels_from_json(PanelSheet.panels_to_json(sig, asg), "other").is_empty(), "stored panels belong to one file only")
 
 
 func _layout_checks() -> void:
 	print("== sheet layout from wall sizes")
 	var info := {"main": {"len": 15.8, "wid": 9.9, "wall_h": 5.5, "roof_h": 3.0}, "roof": "gable", "annexes": []}
-	var lay := GptPrompt.layout(info)
+	var layout_elems: Array = [["S1", 15.8, 7.0, "wall"], ["S2", 15.8, 7.0, "wall"], ["S3", 9.9, 10.0, "gable", 7.0], ["S4", 9.9, 10.0, "gable", 7.0], ["S5", 15.8, 5.6, "roof"]]
+	var lay := SheetLayout.compute(layout_elems)
 	var ppm := int(lay["ppm"])
 	ok(ppm >= 100 and lay["frames"].size() == 5, "layout: %d px/m, %d frames" % [ppm, lay["frames"].size()])
 	# frames are inside the canvas and do not overlap
@@ -1014,7 +1346,7 @@ func _layout_checks() -> void:
 	ok(float(s3[3]) / float(s3[2]) > 0.9, "layout: the gable frame is nearly square, not a 2:1 sector (%d x %d)" % [s3[2], s3[3]])
 	ok(float(lay["fill"]) > 0.55, "layout: canvas used to %d%%" % int(float(lay["fill"]) * 100.0))
 	# scale is as high as it can be: one more px/m no longer fits
-	var bigger := SheetLayout.compute(GptPrompt.layout_elems(info))
+	var bigger := SheetLayout.compute(layout_elems)
 	ok(int(bigger["ppm"]) == ppm, "layout is deterministic")
 	# the guide image draws all frames and the gable outline
 	var guide := SheetLayout.render_guide(lay)

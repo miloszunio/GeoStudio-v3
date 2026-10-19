@@ -65,7 +65,8 @@ var ridge_half := 1.0
 var half_pos := 1.0               # distance ridge -> eave on the t > 0 side (asymmetric roofs: differs from half_neg)
 var half_neg := 1.0
 var ridge_shift := 0.0            # ridge offset from the middle of the span (m, t > 0 = side A)
-var roof_mode := "gable"          # "gable" (also flat when roof_h_cur = 0) or "shed"
+var roof_mode := "gable"          # "gable" (also flat when roof_h_cur = 0), "shed" or "planes" (generated roof, see RoofGen)
+var roof_planes: Array = []        # planes of a generated roof: [{"a","b","c","label","end"}]
 var shed_axis := 0                # shed roofs fall along x (0) or z/y (1) ...
 var shed_sign := 1                # ... towards + (1) or - (-1) of that axis
 var shed_lo := 0.0
@@ -115,7 +116,6 @@ var diag_lines: Array[String] = []
 
 
 func _ready() -> void:
-	RenderingServer.set_debug_generate_wireframes(true)   # before any mesh exists
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 
 	settings = AppSettings.new()
@@ -542,6 +542,7 @@ func _update_steps() -> void:
 	panel.set_tab_state("building", "done" if built else "")
 	panel.set_tab_enabled("building", built, "Najpierw zbuduj model w kroku 1 (zaznacz budynek na mapie i kliknij „Zbuduj model 3D”).")
 	panel.set_tab_enabled("tex", built, "Najpierw zbuduj model w kroku 1 (zaznacz budynek na mapie i kliknij „Zbuduj model 3D”).")
+	panel.set_tab_enabled("roof", built, "Najpierw zbuduj model w kroku 1 (zaznacz budynek na mapie i kliknij „Zbuduj model 3D”).")
 	panel.set_tab_state("tex", "done" if settings.b("tex_enabled") and atlas != null and atlas.regions.size() > 0 else "")
 
 
@@ -550,7 +551,7 @@ func _on_sidebar_tab(id: String) -> void:
 	match id:
 		"place":
 			tabs.current_tab = 0
-		"building", "tex", "view":
+		"building", "tex", "roof", "view":
 			tabs.current_tab = 1
 
 
@@ -643,6 +644,8 @@ func _on_setting_changed(key: String) -> void:
 		_update_steps()
 	if key.begins_with("view_"):
 		_apply_view(key.begins_with("view_grid"))
+		if key.begins_with("view_wire") or key.begins_with("view_vert"):
+			update_edge_overlay()
 	elif key.begins_with("map_"):
 		if key == "map_refresh_delay":
 			map_timer.wait_time = settings.f("map_refresh_delay")
@@ -756,6 +759,10 @@ func _on_action(id: String) -> void:
 			atlasflow._on_texture_source_changed()
 		"act_tex_reslice":
 			atlasflow._on_texture_source_changed(true)
+		"act_mgdot_save":
+			projflow.save_mgdot(false)
+		"act_mgdot_save_as":
+			projflow.save_mgdot(true)
 		"act_project_switch":
 			projflow._show_project_dialog(project.is_open())
 		"act_project_render":
@@ -768,25 +775,31 @@ func _on_action(id: String) -> void:
 				_set_status("Najpierw wskaż folder projektu.")
 		"act_gpt_prompt":
 			gpt._show_gpt_prompt()
-		"act_gpt_paste":
-			gpt._show_gpt_paste()
 		"act_export_glb":
 			exporter._export_glb()
+		"act_export_gltf":
+			exporter._export_gltf()
+		"act_export_t3d":
+			exporter._export_t3d()
 		"act_open_exports":
 			OS.shell_open(exporter._exports_dir())
 		"act_roof_from_tex":
 			_apply_roof_from_texture()
 		"act_roof_editor", "act_roof_editor2":
 			roofed.open()
+		"act_roof_simple":
+			roofed.open_simple()
 		"act_chimney_editor":
 			chimneys.open()
 		"act_tex_clear":
-			gpt.describe = {}
 			mapping.rectified = {}
+			settings.set_value("tex_panels", "")
 			settings.set_value("tex_source", "")
 			settings.set_value("tex_enabled", false)
 		"act_tex_preview":
 			atlasflow._show_slice_preview()
+		"act_tex_panels":
+			atlasflow.open_panel_editor()
 		"act_tex_import":
 			atlasflow._open_import_dialog()
 		"act_tex_open_dir":
@@ -846,11 +859,17 @@ func _apply_view(rebuild_grid: bool) -> void:
 	ground_mat.albedo_color = settings.c("view_ground_color")
 	ground.visible = settings.b("view_show_ground")
 	grid_mesh.visible = settings.b("view_show_grid")
-	subviewport.debug_draw = Viewport.DEBUG_DRAW_WIREFRAME if settings.b("view_wireframe") else Viewport.DEBUG_DRAW_DISABLED
+	subviewport.debug_draw = Viewport.DEBUG_DRAW_DISABLED
 	if rebuild_grid or grid_mesh.mesh == null:
 		_rebuild_grid()
 	_apply_visibility()
 	rig._update_camera_transform()
+
+
+## Edge / vertex overlay (view tab); rebuilt from the current model meshes.
+func update_edge_overlay() -> void:
+	if is_instance_valid(building_root):
+		EdgeOverlay.apply(building_root, settings)
 
 
 func _rebuild_grid() -> void:
@@ -1659,12 +1678,6 @@ func _face_preview(fid: String) -> Dictionary:
 	for c in [r.position, Vector2(r.end.x, r.position.y), r.end, Vector2(r.position.x, r.end.y)]:
 		poly.append(FaceStore.uv_transform(c, g["pivot"], g["pw"], g["ph"], mp["off"], mp["scale"], mp["rot"], mp["flip"]))
 	var pv := {"tex": tex, "poly": poly}
-	var sec := _sector_of(str(g["key"]))
-	if str(g["key"]) == sec and gpt.describe.get("sectors", {}).has(sec):
-		var ops: Array = []
-		for e in gpt.describe["sectors"][sec]["elements"]:
-			ops.append({"rect": e["rect"], "lit": bool(e["lit"]), "type": e["type"]})
-		pv["openings"] = ops
 	return pv
 
 
@@ -1957,7 +1970,52 @@ func _resolve_parts(parts: Array, pts_list: Array) -> Array:
 				P["roof_h"] = rh if rh > 0.0 else main_roof_h
 			else:
 				P["roof_h"] = rh if rh > 0.0 else main_slope * float(P["ridge_half"])
+	_apply_roof_gen(rt)
 	return rt
+
+
+## Parts that have a generated roof (the "Dach" window) get their planes; the rest keeps the simple roof.
+func _apply_roof_gen(rt: Array) -> void:
+	for gen in RoofGen.list_from_json(settings.s("model_roof_gen")):
+		var i := int(gen.get("part", 0))
+		if i < 0 or i >= rt.size():
+			continue
+		var P: Dictionary = rt[i]
+		if str(P["roof_kind"]) != "gable":
+			continue
+		var bb: Rect2 = P["bb"]
+		var along_x: bool = P["ridge_along_x"]
+		var span := 2.0 * float(P["ridge_half"])
+		var pl := RoofGen.planes(gen, span, _left_is_pos(P), float(P["ridge_mid"]), along_x, float(P["wall_h"]),
+			bb.position.x if along_x else bb.position.y, bb.end.x if along_x else bb.end.y)
+		if pl.is_empty():
+			continue
+		P["mode"] = "planes"
+		P["planes"] = pl
+		P["roof_h"] = RoofGen.ridge_height(RoofGen.normalize(gen, span)["prof"])
+		P["gen"] = gen
+
+
+## True when the left end of the gable picture is model side A (t > 0).
+func _left_is_pos(P: Dictionary) -> bool:
+	var pts: PackedVector2Array = P["pts"]
+	var along_x_ridge: bool = P["ridge_along_x"]
+	for i in range(pts.size()):
+		var a2 := pts[i]
+		var b2 := pts[(i + 1) % pts.size()]
+		var e := b2 - a2
+		if e.length() < 0.5:
+			continue
+		var dir := e.normalized()
+		var along_x := absf(dir.x) >= absf(dir.y)
+		if along_x == along_x_ridge:
+			continue
+		var normal := Vector3(dir.y, 0.0, -dir.x)
+		var side := (1 if normal.z > 0.0 else 0) if along_x else (1 if normal.x > 0.0 else 0)
+		if side != 0:
+			continue
+		return ((b2.y if along_x_ridge else b2.x) - float(P["ridge_mid"])) > 0.0
+	return true
 
 
 var _roof_internal := false
@@ -1999,8 +2057,8 @@ func roof_gable_info() -> Dictionary:
 	out["wall_h"] = float(P["wall_h"])
 	out["roof_h"] = float(P["roof_h"])
 	out["span"] = 2.0 * float(P["ridge_half"])
-	if _use_textures():
-		out["key"] = _gable_key()
+	if atlas.loaded:
+		out["key"] = _gable_key()        # the picture is wanted even when the model is shown without textures
 	var pts: PackedVector2Array = P["pts"]
 	var along_x_ridge: bool = P["ridge_along_x"]
 	for i in range(pts.size()):
@@ -2074,6 +2132,7 @@ func _use_part(P: Dictionary) -> void:
 	half_pos = ridge_half - ridge_shift
 	half_neg = ridge_half + ridge_shift
 	roof_mode = P["mode"]
+	roof_planes = P.get("planes", [])
 	shed_axis = P["shed_axis"]
 	shed_sign = P["shed_sign"]
 	shed_lo = P["shed_lo"]
@@ -2194,7 +2253,7 @@ func roof_ridge_info(part: int) -> Dictionary:
 	if last_rt.is_empty():
 		return {"has": false, "along_x": true, "mid": 0.0}
 	_use_part(last_rt[clampi(part, 0, last_rt.size() - 1)])
-	var out := {"has": _has_ridge(), "along_x": ridge_along_x, "mid": ridge_mid}
+	var out := {"has": _has_ridge() or roof_mode == "planes", "along_x": ridge_along_x, "mid": ridge_mid}
 	_use_part(last_rt[0])
 	return out
 
@@ -2226,13 +2285,33 @@ func _roof_down(p: Vector2) -> float:
 ## Roof surface height. Linear in the distance from the ridge / high edge, so it simply keeps going
 ## (below the eave line) across the overhang.
 func _top_y(p: Vector2) -> float:
+	if roof_mode == "planes":
+		return RoofGen.height_at(roof_planes, p.x, p.y)
 	if roof_mode == "shed":
 		return wall_h_cur + roof_h_cur - _roof_slope() * _roof_down(p)
 	return wall_h_cur + _roof_slope_at(p) * _roof_down(p)
 
 
 func _has_ridge() -> bool:
-	return roof_mode != "shed"
+	return roof_mode != "shed" and roof_mode != "planes"
+
+
+## Parameters (0..1) along the edge a -> b where two roof planes cross: the wall top has a kink there.
+func _plane_breaks(a: Vector2, b: Vector2) -> Array[float]:
+	var res: Array[float] = []
+	var n := roof_planes.size()
+	var ha: Array[float] = []
+	var hb: Array[float] = []
+	for pl in roof_planes:
+		ha.append(float(pl["a"]) * a.x + float(pl["b"]) * a.y + float(pl["c"]))
+		hb.append(float(pl["a"]) * b.x + float(pl["b"]) * b.y + float(pl["c"]))
+	for i in range(n):
+		for j in range(i + 1, n):
+			var d0 := ha[i] - ha[j]
+			var d1 := hb[i] - hb[j]
+			if d0 * d1 < 0.0:
+				res.append(d0 / (d0 - d1))
+	return res
 
 
 func _ridge_t(p: Vector2) -> float:
@@ -2319,7 +2398,12 @@ func _build_walls(pts: PackedVector2Array, covers: Array = []) -> MeshInstance3D
 		for c in edge_covers:
 			ts.append(clampf(c[0], 0.0, 1.0))
 			ts.append(clampf(c[1], 0.0, 1.0))
+		if roof_mode == "planes":
+			ts.append_array(_plane_breaks(a2, b2))
 		ts.sort()
+		if roof_mode == "planes":
+			for tt in ts:
+				hmax = maxf(hmax, _top_y(a2.lerp(b2, tt)))
 
 		var fid := "p%d:w%d" % [part_variant, i]
 		var face := _wall_face(dir, normal, length, hmax, fid)
@@ -2544,8 +2628,240 @@ func _push_tri(surf: Dictionary, vs: Array, uvs: Array) -> void:
 		surf["uv"].append(uvs[j])
 
 
+## Polygon cut to the half plane a*x + b*z + c >= 0.
+static func _clip_halfplane(poly: PackedVector2Array, a: float, b: float, c: float) -> PackedVector2Array:
+	var out := PackedVector2Array()
+	var n := poly.size()
+	for i in range(n):
+		var p := poly[i]
+		var q := poly[(i + 1) % n]
+		var dp := a * p.x + b * p.y + c
+		var dq := a * q.x + b * q.y + c
+		if dp >= 0.0:
+			out.append(p)
+		if (dp >= 0.0) != (dq >= 0.0):
+			out.append(p.lerp(q, dp / (dp - dq)))
+	return out
+
+
+## Generated roof: every plane of RoofGen is a facet; the surface is the lower envelope, cut by the outline with overhangs.
+func _build_roof_planes(pts: PackedVector2Array, others: Array = []) -> MeshInstance3D:
+	var outline := _roof_outline(pts, others)
+	var tri_idx := Geometry2D.triangulate_polygon(outline)
+	if tri_idx.is_empty():
+		return null
+	var thick := settings.f("model_roof_thickness")
+	var roof_key := ""
+	if _use_textures():
+		roof_key = _forced_region("tex_roof")
+		if roof_key == "":
+			roof_key = atlas.pick_key("roof", settings.i("tex_variant"))
+	var n := roof_planes.size()
+	var facets: Array = []
+	for k in range(n):
+		facets.append([])
+	for t in range(0, tri_idx.size(), 3):
+		var tri := PackedVector2Array([outline[tri_idx[t]], outline[tri_idx[t + 1]], outline[tri_idx[t + 2]]])
+		for k in range(n):
+			var pk: Dictionary = roof_planes[k]
+			var poly := tri
+			for j in range(n):
+				if j == k:
+					continue
+				var pj: Dictionary = roof_planes[j]
+				var da := float(pj["a"]) - float(pk["a"])
+				var db := float(pj["b"]) - float(pk["b"])
+				var dc := float(pj["c"]) - float(pk["c"])
+				if absf(da) < 1e-6 and absf(db) < 1e-6 and absf(dc) < 1e-6:
+					if j < k:
+						poly = PackedVector2Array()
+					continue
+				poly = _clip_halfplane(poly, da, db, dc)
+				if poly.size() < 3:
+					break
+			if poly.size() >= 3:
+				(facets[k] as Array).append(poly)
+
+	var drop := Vector3(0.0, -thick, 0.0)
+	var tops := {}
+	var under := {"v": [], "n": [], "uv": []}
+	var order: Array = []
+	var frame := {}
+	for k in range(n):
+		if (facets[k] as Array).is_empty():
+			continue
+		var pk: Dictionary = roof_planes[k]
+		var id := str(pk["label"])
+		var fid := "p%d:roof%s" % [part_variant, id]
+		var g := Vector2(float(pk["a"]), float(pk["b"]))
+		var m := g.length()
+		var up := g / m if m > 1e-4 else (Vector2(0.0, 1.0) if ridge_along_x else Vector2(1.0, 0.0))
+		var perp := Vector2(-up.y, up.x)
+		if perp.x < -1e-4 or (absf(perp.x) <= 1e-4 and perp.y < 0.0):
+			perp = -perp
+		var fac := sqrt(1.0 + m * m)
+		var lo := Vector2(INF, INF)
+		var hi := Vector2(-INF, -INF)
+		for poly in facets[k]:
+			for q in poly:
+				var uv0 := Vector2(q.dot(perp), q.dot(up) * fac)
+				lo = Vector2(minf(lo.x, uv0.x), minf(lo.y, uv0.y))
+				hi = Vector2(maxf(hi.x, uv0.x), maxf(hi.y, uv0.y))
+		var sk := _face_region(roof_key, fid)
+		var tl := Vector2.ONE * maxf(settings.f("tex_roof_tile_m"), 0.1)
+		if sk != "":
+			tl.y = tl.x / maxf(atlas.aspect(sk), 0.05)
+		if settings.b("tex_roof_rotate"):
+			tl = Vector2(tl.y, tl.x)
+		var ext := hi - lo
+		if not settings.b("tex_roof_repeat") or _roof_picture_is_whole(sk, ext.x, maxf(ext.y, 0.1)):
+			tl = Vector2(maxf(ext.x, 0.1), maxf(ext.y, 0.1))
+			if settings.b("tex_roof_rotate"):
+				tl = Vector2(tl.y, tl.x)
+		frame[id] = {"fid": fid, "key": sk, "tile": tl, "lo": lo, "hi": hi}
+		var top := {"v": [], "n": [], "uv": []}
+		for poly in facets[k]:
+			for i in range(1, poly.size() - 1):
+				var qs: Array[Vector2] = [poly[0], poly[i], poly[i + 1]]
+				var vs: Array = []
+				var uvs: Array = []
+				for q in qs:
+					vs.append(Vector3(q.x, float(pk["a"]) * q.x + float(pk["b"]) * q.y + float(pk["c"]), q.y))
+					var u := (q.dot(perp) - lo.x) / tl.x if not settings.b("tex_roof_rotate") else (q.dot(up) * fac - lo.y) / tl.x
+					var v := (q.dot(up) * fac - lo.y) / tl.y if not settings.b("tex_roof_rotate") else (q.dot(perp) - lo.x) / tl.y
+					uvs.append(Vector2(u, v))
+				_add_tri(top, vs, uvs, true)
+				if thick > 0.001:
+					_add_tri(under, [vs[0] + drop, vs[1] + drop, vs[2] + drop], uvs, false)
+		tops[id] = top
+		order.append(id)
+
+	# Rim: a vertical band along the outline, split where two planes cross.
+	if thick > 0.001:
+		var n_pts := outline.size()
+		for i in range(n_pts):
+			var a := outline[i]
+			var b := outline[(i + 1) % n_pts]
+			var us: Array[float] = [0.0, 1.0]
+			us.append_array(_plane_breaks(a, b))
+			us.sort()
+			for c in range(us.size() - 1):
+				if us[c + 1] - us[c] < 1e-5:
+					continue
+				var c0 := a.lerp(b, us[c])
+				var c1 := a.lerp(b, us[c + 1])
+				var p0 := Vector3(c0.x, _top_y(c0), c0.y)
+				var p1 := Vector3(c1.x, _top_y(c1), c1.y)
+				var z := Vector2.ZERO
+				var outward := Vector3(p1.z - p0.z, 0.0, -(p1.x - p0.x))
+				var mid := Vector3((p0.x + p1.x) * 0.5, 0.0, (p0.z + p1.z) * 0.5)
+				if Geometry2D.is_point_in_polygon(Vector2(mid.x, mid.z) + Vector2(outward.x, outward.z).normalized() * 0.01, outline):
+					outward = -outward
+				var q0 := p0 + drop
+				var q1 := p1 + drop
+				for tri3 in [[p0, p1, q1], [p0, q1, q0]]:
+					var nrm: Vector3 = (tri3[2] - tri3[0]).cross(tri3[1] - tri3[0])
+					var tv: Array = tri3
+					if nrm.dot(outward) < 0.0:
+						tv = [tri3[0], tri3[2], tri3[1]]
+					_push_tri(under, tv, [z, z, z])
+	if order.is_empty():
+		return null
+
+	# Face corrections of a facet: move / scale / turn the picture around the centre of the facet.
+	var corrected := false
+	for id in order:
+		var fr: Dictionary = frame[id]
+		var sd: Dictionary = tops[id]
+		var uvs_arr: Array = sd["uv"]
+		var tl: Vector2 = fr["tile"]
+		var lo2 := Vector2(INF, INF)
+		var hi2 := Vector2(-INF, -INF)
+		for q in uvs_arr:
+			lo2 = Vector2(minf(lo2.x, q.x), minf(lo2.y, q.y))
+			hi2 = Vector2(maxf(hi2.x, q.x), maxf(hi2.y, q.y))
+		face_geo[fr["fid"]] = {"key": fr["key"], "uv": Rect2(lo2, hi2 - lo2), "pivot": (lo2 + hi2) * 0.5, "pw": tl.x, "ph": tl.y}
+		if faces.has_face(str(fr["fid"])):
+			corrected = true
+		if not faces.has_mapping(fr["fid"]) or fr["key"] == "":
+			continue
+		var centre := Vector2.ZERO
+		for q in uvs_arr:
+			centre += q
+		centre /= float(uvs_arr.size())
+		var mp: Dictionary = faces.mapping(fr["fid"])
+		for k in range(uvs_arr.size()):
+			uvs_arr[k] = FaceStore.uv_transform(uvs_arr[k], centre, tl.x, tl.y, mp["off"], mp["scale"], mp["rot"], mp["flip"])
+
+	var groups: Array = []
+	var same_key := true
+	for id in order:
+		if frame[id]["key"] != frame[order[0]]["key"]:
+			same_key = false
+	if not corrected and same_key:
+		var both := {"v": [], "n": [], "uv": [], "fids": []}
+		for id in order:
+			both["v"].append_array(tops[id]["v"])
+			both["n"].append_array(tops[id]["n"])
+			both["uv"].append_array(tops[id]["uv"])
+			for i in range((tops[id]["v"] as Array).size() / 3):
+				both["fids"].append(frame[id]["fid"])
+		groups.append([both, str(order[0])])
+	else:
+		for id in order:
+			var one: Dictionary = tops[id]
+			one["fids"] = []
+			for i in range((one["v"] as Array).size() / 3):
+				one["fids"].append(frame[id]["fid"])
+			groups.append([one, id])
+	groups.append([under, ""])
+	var mesh := ArrayMesh.new()
+	var pick_tris := PackedVector3Array()
+	var pick_ids := PackedStringArray()
+	var surf_lit: Array = []
+	for pair in groups:
+		var sd: Dictionary = pair[0]
+		if (sd["v"] as Array).is_empty():
+			continue
+		var arrays := []
+		arrays.resize(Mesh.ARRAY_MAX)
+		arrays[Mesh.ARRAY_VERTEX] = PackedVector3Array(sd["v"])
+		arrays[Mesh.ARRAY_NORMAL] = PackedVector3Array(sd["n"])
+		arrays[Mesh.ARRAY_TEX_UV] = PackedVector2Array(sd["uv"])
+		mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+		var si := mesh.get_surface_count() - 1
+		var side_id: String = pair[1]
+		var fid := str(frame[side_id]["fid"]) if side_id != "" else ""
+		var sk: String = str(frame[side_id]["key"]) if side_id != "" else ""
+		var base_mat: StandardMaterial3D = roof_material
+		if sk != "":
+			base_mat = _tex_material(sk, "roof:")
+		elif side_id == "":
+			var first_key: String = str(frame[order[0]]["key"])
+			if first_key != "":
+				base_mat = _roof_edge_material(first_key)
+		mesh.surface_set_material(si, _face_material(base_mat, "r|" + sk, fid) if (fid != "" and faces.has_material(fid)) else base_mat)
+		surf_lit.append(fid != "" and faces.has_material(fid) and bool(faces.get_value(fid, "light")))
+		if side_id == "":
+			for ti in range((sd["v"] as Array).size() / 3):
+				pick_ids.append("")
+		else:
+			for f2 in (sd["fids"] as Array):
+				pick_ids.append(str(f2))
+		pick_tris.append_array(PackedVector3Array(sd["v"]))
+	var mi := MeshInstance3D.new()
+	mi.name = "Roof"
+	mi.mesh = mesh
+	mi.set_meta("pick_tris", pick_tris)
+	mi.set_meta("pick_ids", pick_ids)
+	mi.set_meta("surf_lit", surf_lit)
+	return mi
+
+
 ## Roof as its own solid: top surface (textured, tiled), underside and rim, overhanging the walls.
 func _build_roof(pts: PackedVector2Array, others: Array = []) -> MeshInstance3D:
+	if roof_mode == "planes":
+		return _build_roof_planes(pts, others)
 	var outline := _roof_outline(pts, others)
 	var tri_idx := Geometry2D.triangulate_polygon(outline)
 	if tri_idx.is_empty():

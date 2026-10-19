@@ -289,6 +289,7 @@ func rebuild() -> void:
 		var mi := build_one(arr[i], i)
 		if mi != null:
 			root.add_child(mi)
+	app.update_edge_overlay()
 	app._apply_visibility()
 
 

@@ -1,4 +1,6 @@
-# Język opisu modeli (warstwa metadanych) — wersja robocza 1
+# Język opisu modeli (warstwa metadanych) — wersja robocza 1 / Model description language (metadata layer) — draft 1
+
+PL poniżej, krótkie EN na końcu. / Polish below, a short English summary at the end.
 
 **Status: szkic do przeglądu przez zespół.** Dokument opisuje *kontrakt* między eksporterem
 (Photo-to-3D Studio) a konsumentami (Blender, Godot world-assets / Reloaded, dalsze potoki do E3D/T3D).
@@ -36,28 +38,8 @@ E3D/T3D to warstwa implementacji; tu opisujemy warstwę **znaczenia**.
 | `texture` | object | `file`, `px_per_m` |
 | `placement` | object | położenie w świecie, patrz niżej |
 
-| `surfaces` | object[] | (gdy wczytano opis GPT) `{face, sector, material, condition, source}` — klasa materiału każdej powierzchni; `source` = `photo` (poprawione zdjęcie tej ściany) lub `inferred` (ściana wywnioskowana, bez zdjęcia) |
-| `openings` | object[] | (gdy wczytano opis GPT) okna/drzwi, patrz niżej |
-| `described_building` | object | podpowiedzi z opisu GPT (`roof_shape`, `floors`, `colour`) — informacyjnie, **nie** zastępują pól nadrzędnych |
-
-## Klasy materiałów (`surfaces[].material`)
-
-`plaster`, `brick`, `stone`, `concrete`, `wood`, `metal_sheet`, `roof_tile`, `roofing_felt`, `thatch`, `glass`, `other`.
-Stan (`condition`): `new`, `good`, `worn`, `dirty`. Liczby (chropowatość, metaliczność, połysk) wynikają z tabeli
-w programie i trafiają do materiałów glTF; w meta zostaje sama klasa, żeby potok końcowy mógł użyć własnych wartości.
-
-## Otwory (`openings`)
-
-```
-{ "id": "okno_1", "type": "window|door|gate|shopfront|vent", "sector": "S1",
-  "texture_rect": [x0, y0, x1, y1],            // ułamki obrazu ściany w sektorze, (0,0) = lewy górny róg
-  "texture_quad": [A, B, C, D],                // A lewy górny, B prawy górny, C prawy dolny, D lewy dolny
-  "emissive_light": true,                       // tylko gdy okno świeci
-  "on_walls": [ { "face": "p0:w0", "wall_rect_m": [x0, y0, x1, y1] } ] }   // metry od lewego dolnego rogu ściany; tylko gdy obraz występuje na ścianie raz
-```
-
-Pozycje podaje GPT, a program dociąga je do najsilniejszych krawędzi na obrazie (dokładność kilku pikseli).
-`wall_rect_m` jest przybliżone (zakłada, że obraz ściany leży na niej bez korekt mapowania).
+| `part_roofs` | object[] | (gdy dach z generatora lub asymetryczny) dach per część, patrz niżej |
+| `chimneys` | object[] | kominy, patrz niżej |
 
 ## Położenie (`placement`)
 
@@ -81,11 +63,11 @@ Wektory są ortonormalne. Uwaga: liczyć w podwójnej precyzji (EPSG:2180 ma war
 | `emissive_light` | bool | **tylko gdy `true`**: część świeci (okna, lampy). Brak klucza = nie świeci. |
 
 Części świecące są wydzielone do osobnego węzła (`..._lit`), więc konsument nie musi filtrować trójkątów.
-Obecnie oznaczana jest cała ściana/połać; światło tylko w oknach wymaga osobnej geometrii okien (do zrobienia).
+Oznaczana jest cała ściana/połać (pole „Świeci” w panelu powierzchni); światło tylko w oknach wymaga osobnej geometrii okien (nie zrobione; opis otworów z GPT usunięto).
 
 ## Czego format nie niesie
 
-- LOD-ów, speculara (core glTF go nie ma) — do ustalenia, czy potrzebne jako meta.
+- LOD-ów (są dopiero w eksporcie T3D, patrz [FORMATS.md](FORMATS.md)), speculara (core glTF go nie ma).
 - Szczegółów korekt mapowania (są w pliku projektu, nie w eksporcie).
 
 ## Pytania do zespołu
@@ -94,11 +76,12 @@ Obecnie oznaczana jest cała ściana/połać; światło tylko w oknach wymaga os
 - Czy `emissive_light` ma być bool, czy poziom (`emissive_strength`) / kolor?
 - Czy potrzebne dodatkowe typy `model_type` (kapliczka, wiata, ogrodzenie)?
 
-### Dach asymetryczny (opcjonalne pola części)
-Dla `roof_kind == "gable"` z asymetryczną kalenicą część ma dodatkowo:
+### Dach per część – `part_roofs` (opcjonalne)
+Lista wpisów `{part, ...}`; pola występują tylko wtedy, gdy dotyczą części:
 - `ridge_shift` – przesunięcie kalenicy od środka rozpiętości w metrach (dodatnie = w stronę strony A, czyli t > 0 osi poprzecznej do kalenicy),
+- `roof_profile` – (v3, tylko dla dachu z zakładki Dach) profil dachu w rzucie szczytu: pary `[x od lewej krawędzi zdjęcia szczytu, y ponad okapem]` w metrach, od ściany do ściany (≤7 wierzchołków); `roof_hip_a`, `roof_hip_b` – wcięcie naczółków od końców kalenicy w metrach (0 = brak).
 - `roof_angles` – `[kąt połaci A, kąt połaci B]` w stopniach.
-Brak pól = dach symetryczny. Wysunięcie dachu poza ściany jest już zawarte w bryle dachu (mesh), meta go nie powtarza.
+Brak wpisu = dach symetryczny, prosty. Wysunięcie dachu poza ściany jest już zawarte w bryle dachu (mesh), meta go nie powtarza.
 
 ### Kominy (opcjonalne)
 Węzły `chimney_<n>` (`layer: "chimney"`, `part` = bryła, na której dachu stoi komin). Węzeł główny ma dodatkowo listę `chimneys`:
@@ -114,3 +97,20 @@ Węzły `chimney_<n>` (`layer: "chimney"`, `part` = bryła, na której dachu sto
 | `cap` | bool | czy ma betonową czapkę (płyta 8 cm, wysunięta o 5 cm poza korpus) |
 
 Brak listy = brak kominów. Korpus ma teksturę powielaną z fragmentu ściany (materiał `chimney_<n>`).
+
+
+---
+
+## English summary
+
+The meta layer is the **meaning** of the model; the mesh is only visualisation. Metadata live in the glTF node `extras.meta` and in `<model>.meta.json`. Units: metres, Y up; world: EPSG:2180.
+
+- Root node `Building`: `meta_version`, `model_type`, `generator`, `name`, `source`, `egib_ids`, `parts`, `floors`, `height`, `wall_height`, `roof_shape` (`gabled`/`skillion`/`flat`), `roof_height`,
+  `roof_orientation`, `colour`, `footprints` (local metres [x, z]), `texture` (`file`, `px_per_m`), `placement`, `part_roofs`, `chimneys`.
+- `placement`: `E = origin[0] + x·local_x[0] + z·local_z[0]`, `N = origin[1] + x·local_x[1] + z·local_z[1]` (compute in double precision).
+- Submodels (mesh nodes): `layer` (`walls`/`roof`/`chimney`), `part`, `part_role` (`main`/`annex`), `chimney_id`, `emissive_light` (only when true; lit parts are separate nodes `..._lit`).
+- `part_roofs[]`: `part`, `ridge_shift` (m from the middle, + towards side A), `roof_angles` [A, B] (deg), `roof_profile` (pairs `[x from the left edge of the gable picture, y above the eaves]`, m, wall to wall, ≤ 7 vertices),
+  `roof_hip_a`, `roof_hip_b` (hip setback from the ridge ends, m; 0 = none). The overhang is already part of the roof mesh.
+- `chimneys[]`: `id`, `part`, `centre` [x, z], `size` [width X, length Z], `height_above_roof`, `base_y`, `top_y`, `cap`.
+- Not carried: LODs (only in the T3D export), specular, UV edit details (those are in the project file).
+- Removed in v3: `surfaces`, `openings`, `described_building` (the ChatGPT JSON description no longer exists).

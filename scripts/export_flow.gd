@@ -35,6 +35,12 @@ func export_info() -> Dictionary:
 			var sh: float = frac * float(P["ridge_half"])
 			(parts[parts.size() - 1] as Dictionary)["ridge_shift"] = snappedf(sh, 0.01)    # m from the middle, + = towards side A
 			(parts[parts.size() - 1] as Dictionary)["roof_angles"] = [snappedf(rad_to_deg(atan2(float(P["roof_h"]), float(P["ridge_half"]) - sh)), 0.1), snappedf(rad_to_deg(atan2(float(P["roof_h"]), float(P["ridge_half"]) + sh)), 0.1)]
+	for gen in RoofGen.list_from_json(app.settings.s("model_roof_gen")):
+		var gi := int(gen.get("part", 0))
+		if gi >= 0 and gi < parts.size():
+			(parts[gi] as Dictionary)["roof_profile"] = gen["prof"]    # [x from left of gable pic, y above eaves] pairs
+			(parts[gi] as Dictionary)["roof_hip_a"] = gen.get("ra", 0.0)
+			(parts[gi] as Dictionary)["roof_hip_b"] = gen.get("rb", 0.0)
 	var ids: Array = []
 	for a in app.current_attrs:
 		for k in (a as Dictionary).keys():
@@ -49,10 +55,6 @@ func export_info() -> Dictionary:
 	var chim: Array = app.chimneys.export_list()
 	if not chim.is_empty():
 		info["chimneys"] = chim
-	if not app.gpt.describe.is_empty():
-		info["surfaces"] = app.gpt.describe_surfaces()
-		info["openings"] = app.gpt.describe_openings()
-		info["gpt_building"] = app.gpt.describe.get("building", {})
 	if app._use_textures():
 		info["texture"] = {"file": app.settings.s("tex_source").get_file(), "px_per_m": app.settings.f("tex_px_per_m")}
 		var longs = app.atlas.keys_for_role("facade_long")
@@ -66,20 +68,67 @@ func export_info() -> Dictionary:
 	return info
 
 
-func _export_glb() -> void:
-	if not is_instance_valid(app.building_root) or app.last_rt.is_empty():
-		app._set_status("Najpierw zbuduj model (krok 1).")
-		return
+func _safe_base() -> String:
 	var base = app.project.project_name() if app.project.is_open() else "model"
 	var safe := ""
 	for ch in base:
 		var c: int = ch.unicode_at(0)
 		var plain: bool = (c >= 48 and c <= 57) or (c >= 65 and c <= 90) or (c >= 97 and c <= 122) or ch in "-_ ."
 		safe += ch if plain else "_"
-	var path := _exports_dir().path_join((safe.strip_edges() if safe.strip_edges() != "" else "model") + ".glb")
+	return safe.strip_edges() if safe.strip_edges() != "" else "model"
+
+
+func _model_ready() -> bool:
+	if not is_instance_valid(app.building_root) or app.last_rt.is_empty():
+		app._set_status("Najpierw zbuduj model (krok 1).")
+		return false
+	return true
+
+
+func _export_glb() -> void:
+	if not _model_ready():
+		return
+	var path := _exports_dir().path_join(_safe_base() + ".glb")
 	var res = ModelExporter.export_glb(app.building_root, export_info(), path)
 	if res["ok"]:
 		app.project.log_event("Eksport GLB: " + app.project.relative(path))
 		app._set_status("Zapisano %s (%d węzłów) + .meta.json." % [path, int(res["nodes"])])
 	else:
 		app._set_status("Eksport nie udał się: %s" % res["error"])
+
+
+## glTF 2.0 as separate files: <name>.gltf + <name>.bin + the textures next to them (folder exports/gltf/<name>/).
+func _export_gltf() -> void:
+	if not _model_ready():
+		return
+	var dir := _exports_dir().path_join("gltf").path_join(_safe_base())
+	DirAccess.make_dir_recursive_absolute(dir)
+	var path := dir.path_join(_safe_base() + ".gltf")
+	var res = ModelExporter.export_glb(app.building_root, export_info(), path)
+	if res["ok"]:
+		app.project.log_event("Eksport glTF: " + app.project.relative(path))
+		app._set_status("Zapisano %s (+ plik .bin i tekstury) oraz .meta.json." % path)
+	else:
+		app._set_status("Eksport nie udał się: %s" % res["error"])
+
+
+## MaSzyna: models/ textures/ scenery/ nodebank.txt in exports/t3d/<name>/ (see T3dExporter and docs).
+func _export_t3d() -> void:
+	if not _model_ready():
+		return
+	var names := {}
+	if app.atlas.loaded:
+		for k in app.atlas.regions.keys():
+			var t = app.atlas.regions[k].get("tex", null)
+			if t != null:
+				names[(t as Texture2D).get_instance_id()] = str(k)
+	var base := _safe_base()
+	var dir := _exports_dir().path_join("t3d").path_join(T3dExporter.safe_name(base))
+	var res := T3dExporter.export(app.building_root, app.chimneys.export_list(), base, dir, {
+		"folder": app.settings.s("export_t3d_folder"), "tex_max": app.settings.i("export_t3d_tex_max"),
+		"smoke": app.settings.b("export_t3d_smoke"), "lights": app.settings.b("export_t3d_lights"), "names": names})
+	if res["ok"]:
+		app.project.log_event("Eksport T3D: " + app.project.relative(dir))
+		app._set_status("T3D zapisany w %s (LOD0 %d wierzch., LOD1 %d, tekstur: %d)." % [dir, int(res["verts0"]), int(res["verts1"]), (res["textures"] as Array).size()])
+	else:
+		app._set_status("Eksport T3D nie udał się: %s" % res["error"])

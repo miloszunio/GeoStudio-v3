@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://dtiyjw4p33xd8"
-path="res://.godot/imported/chimneys-3d.png-cc52e50db1d6aaf069d8dfae9eb769f2.ctex"
+uid="uid://ddeb8h6kyjxe4"
+path="res://.godot/imported/model-3d.png-99ddc585a1c37ecdc8ac080cfdd23f9c.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://docs/img/chimneys-3d.png"
-dest_files=["res://.godot/imported/chimneys-3d.png-cc52e50db1d6aaf069d8dfae9eb769f2.ctex"]
+source_file="res://docs/img/model-3d.png"
+dest_files=["res://.godot/imported/model-3d.png-99ddc585a1c37ecdc8ac080cfdd23f9c.ctex"]
 
 [params]
 

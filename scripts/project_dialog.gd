@@ -4,12 +4,16 @@ extends Window
 ## because everything (Geoportal data, texture copy, cut, renders, exports) is stored there.
 
 signal chosen(folder: String)
+signal chosen_file(path: String)
 
 var _recent: ItemList
 var _info: Label
 var _folder_dialog: FileDialog
 var _can_cancel := false
 var _recent_paths: Array = []
+var _files: ItemList
+var _file_dialog: FileDialog
+var _file_paths: Array = []
 
 
 func _init() -> void:
@@ -58,8 +62,22 @@ func _build() -> void:
 	pick.pressed.connect(func() -> void: _folder_dialog.popup_centered_ratio(0.6))
 	row.add_child(pick)
 
+	var pick_file := Button.new()
+	pick_file.text = "Otwórz plik projektu (.mgdot)…"
+	pick_file.custom_minimum_size.y = 40
+	pick_file.pressed.connect(func() -> void: _file_dialog.popup_centered_ratio(0.6))
+	row.add_child(pick_file)
+
+	var fl := Label.new()
+	fl.text = "Ostatnie pliki .mgdot"
+	root.add_child(fl)
+	_files = ItemList.new()
+	_files.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_files.fixed_icon_size = Vector2i(96, 54)
+	_files.item_activated.connect(func(i: int) -> void: _choose_file(str(_file_paths[i])))
+	root.add_child(_files)
 	var rl := Label.new()
-	rl.text = "Ostatnie projekty"
+	rl.text = "Ostatnie foldery projektów"
 	root.add_child(rl)
 	_recent = ItemList.new()
 	_recent.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -93,17 +111,33 @@ func _build() -> void:
 	_folder_dialog.title = "Folder projektu (można utworzyć nowy)"
 	_folder_dialog.dir_selected.connect(_choose)
 	add_child(_folder_dialog)
+	_file_dialog = FileDialog.new()
+	_file_dialog.access = FileDialog.ACCESS_FILESYSTEM
+	_file_dialog.file_mode = FileDialog.FILE_MODE_OPEN_FILE
+	_file_dialog.title = "Otwórz projekt .mgdot"
+	_file_dialog.filters = PackedStringArray(["*.mgdot ; Projekt Photo-to-3D Studio"])
+	_file_dialog.file_selected.connect(_choose_file)
+	add_child(_file_dialog)
 
 
 ## can_cancel: false at start-up (a project is mandatory), true when switching projects.
-func show_dialog(recent_stored: String, can_cancel: bool, hint := "") -> void:
+func show_dialog(recent_stored: String, can_cancel: bool, hint := "", recent_files_stored := "") -> void:
 	_can_cancel = can_cancel
 	_recent_paths = ProjectStore.recent_list(recent_stored)
 	_recent.clear()
 	for p in _recent_paths:
 		var meta := _peek(str(p))
 		_recent.add_item("%s\n%s" % [meta, p])
-	_info.text = hint if hint != "" else ("Brak poprzednich projektów – utwórz pierwszy." if _recent_paths.is_empty() else "")
+	_files.clear()
+	_file_paths = ProjectStore.recent_files(recent_files_stored)
+	for p in _file_paths:
+		var m := MgDot.read_manifest(str(p))
+		var idx := _files.add_item("%s  (zapisano %s)\n%s" % [m.get("name", str(p).get_file()), m.get("saved", "?"), p])
+		var th := MgDot.thumbnail(str(p))
+		if th != null:
+			th.resize(96, 54, Image.INTERPOLATE_BILINEAR)
+			_files.set_item_icon(idx, ImageTexture.create_from_image(th))
+	_info.text = hint if hint != "" else ("Brak poprzednich projektów – utwórz pierwszy." if _recent_paths.is_empty() and _file_paths.is_empty() else "")
 	if not _folder_dialog.current_dir:
 		_folder_dialog.current_dir = OS.get_system_dir(OS.SYSTEM_DIR_DOCUMENTS)
 	popup_centered()
@@ -121,6 +155,11 @@ static func _peek(folder: String) -> String:
 func _choose(folder: String) -> void:
 	hide()
 	chosen.emit(ProjectStore.norm(folder))
+
+
+func _choose_file(path: String) -> void:
+	hide()
+	chosen_file.emit(path)
 
 
 func _on_close() -> void:

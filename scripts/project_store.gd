@@ -221,3 +221,12 @@ static func push_recent(stored: String, folder: String, max_items := 8) -> Strin
 		if p != norm(folder) and list.size() < max_items:
 			list.append(p)
 	return "|".join(PackedStringArray(list))
+
+
+## Same for single files (.mgdot): only those that still exist are listed.
+static func recent_files(stored: String) -> Array:
+	var out: Array = []
+	for p in stored.split("|", false):
+		if FileAccess.file_exists(p):
+			out.append(p)
+	return out
