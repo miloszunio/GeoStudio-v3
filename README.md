@@ -51,6 +51,11 @@ godot --headless --path . --export-release "Linux"   build/linux/GeoStudio.x86_6
 - [docs/MODEL_META.md](docs/MODEL_META.md) – the metadata contract of the exported model (PL + EN).
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) – code layout (PL + EN). [docs/CHANGELOG.md](docs/CHANGELOG.md) – change history.
 
+## Work in progress – next steps
+
+- **The whole metadata section** (`docs/MODEL_META.md`, the `model_meta` block, per-part data, how the simulator side reads it) still has to be worked through and finished.
+- **Cut-outs on the panel** (the sector canvas) for elements that imitate lighting – lit windows, lamps, `light_on` surfaces – need work: how they are cut, marked and exported to T3D (currently a neutral `light_on00` without a mask).
+
 ## Status – what works and what was not verified
 
 A working prototype (3.0.1). **Not verified**: the T3D export in the MaSzyna simulator itself (the format was rebuilt from the sample pack and automatic checks), importing GLB/glTF into Blender and other engines,
@@ -67,4 +72,6 @@ godot --headless --path . --script res://tools/selftest.gd      # 326 checks, ex
 ## Data and licence
 
 Geodata © GUGiK / Geoportal.gov.pl – check the service terms before publishing results. The sample textures in `textures/` are demo material;
-make sure you may redistribute them before publishing the repository. **Add a `LICENSE` file** (a code licence of your choice) before publishing.
+make sure you may redistribute them before publishing the repository.
+
+The code is licensed under the **MIT** licence – see [LICENSE](LICENSE). © 2026 Miłosz "pol102" Mindak. Supported by Claude AI.

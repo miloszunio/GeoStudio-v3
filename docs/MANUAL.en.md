@@ -241,6 +241,7 @@ Further: **Co pokazać** (show: walls, roof, ground, helper grid), **Światło i
 
 ## 13. Known limitations and what was not verified
 
+- **To be worked on next:** (1) the whole **metadata section** (`model_meta`, per-part data, [MODEL_META.md](MODEL_META.md)); (2) the **panel cut-outs** for elements that imitate lighting (lit windows, lamps, `light_on` surfaces) – cutting, marking and the T3D export (now a neutral `light_on00` without a mask).
 - **The T3D export was not checked in the MaSzyna simulator itself.** The format was rebuilt from the sample pack (cottages, street lamps) and checked automatically (vertex order,
   normals, tangents, file layout). To be confirmed in the simulator: the direction of the texture V axis, smoke-source names with several chimneys, `light_on00` without a window mask, the `normalmap_specgloss` shader with neutral maps.
 - The connection to the **live** Geoportal and Nominatim was developed against a mock server; if the map is empty: Opcje → Testuj usługi.

@@ -51,6 +51,11 @@ godot --headless --path . --export-release "Linux"   build/linux/GeoStudio.x86_6
 - [docs/MODEL_META.md](docs/MODEL_META.md) – kontrakt metadanych eksportowanego modelu (PL + EN).
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) – układ kodu (PL + EN). [docs/CHANGELOG.md](docs/CHANGELOG.md) – historia zmian.
 
+## Prace w toku – kolejne kroki
+
+- **Cała sekcja metadanych** (`docs/MODEL_META.md`, blok `model_meta`, dane per część, odczyt po stronie symulatora) wymaga jeszcze przepracowania i dokończenia.
+- **Wycinanki na panelu** (płótno sektorów) pod kątem elementów udających świecenie – podświetlone okna, lampy, powierzchnie `light_on` – wymagają dopracowania: sposób wycinania, oznaczania i eksportu do T3D (obecnie neutralne `light_on00` bez maski).
+
 ## Status – co jest, a czego nie sprawdzono
 
 Działający prototyp (3.0.1). **Nie sprawdzono**: eksportu T3D w samym symulatorze MaSzyna (format odtworzono z paczki przykładowej i kontroli automatycznych), importu GLB/glTF w Blenderze i innych silnikach,
@@ -67,4 +72,6 @@ godot --headless --path . --script res://tools/selftest.gd      # 326 sprawdzeń
 ## Dane i licencja
 
 Geodane © GUGiK / Geoportal.gov.pl – sprawdź warunki usługi przed publikacją wyników. Próbki tekstur w `textures/` to materiał demonstracyjny;
-upewnij się, że możesz je rozpowszechniać, zanim opublikujesz repozytorium. **Dodaj plik `LICENSE`** (licencja kodu wg Twojego wyboru) przed publikacją.
+upewnij się, że możesz je rozpowszechniać, zanim opublikujesz repozytorium.
+
+Kod jest na licencji **MIT** – patrz [LICENSE](LICENSE). © 2026 Miłosz „pol102” Mindak. Supported by Claude AI.

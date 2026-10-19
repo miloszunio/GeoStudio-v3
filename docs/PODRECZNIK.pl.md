@@ -240,6 +240,7 @@ Dalej: **Co pokazać** (elewacje, dach, podłoże, siatka pomocnicza), **Świat�
 
 ## 13. Znane ograniczenia i to, czego nie sprawdzono
 
+- **Do dopracowania w następnej kolejności:** (1) cała **sekcja metadanych** (`model_meta`, dane per część, [MODEL_META.md](MODEL_META.md)); (2) **wycinanki na panelu** pod kątem elementów udających świecenie (podświetlone okna, lampy, powierzchnie `light_on`) – wycinanie, oznaczanie i eksport T3D (obecnie neutralne `light_on00` bez maski).
 - **Eksport T3D nie był sprawdzony w samym symulatorze MaSzyna.** Format odtworzono z paczki przykładowej (domki, latarnie) i z kontroli automatycznych (kolejność wierzchołków,
   normalne, tangenty, układ plików). Do potwierdzenia w symulatorze: kierunek osi V tekstury, nazwy źródeł dymu przy kilku kominach, działanie `light_on00` bez maski okien, shader `normalmap_specgloss` z neutralnymi mapami.
 - Połączenie z **żywym** Geoportalem i Nominatim było rozwijane na atrapie serwera; jeśli mapa jest pusta: Opcje → Testuj usługi.
