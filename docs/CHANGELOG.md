@@ -1,6 +1,6 @@
 # Historia zmian / Changelog
 
-## 3.0.2 (2026-10-20)
+## Docs-only (2026-10-20)
 
 **PL** – dodano licencję MIT (`LICENSE`), zapis o przeznaczeniu dla MaSzyny / MaSzyna Reloaded oraz listę prac w toku (metadane, wycinanki pod elementy udające świecenie).
 **EN** – added the MIT licence (`LICENSE`), a note that the tool targets MaSzyna / MaSzyna Reloaded, and the work-in-progress list (metadata, cut-outs for lighting-imitating elements).
