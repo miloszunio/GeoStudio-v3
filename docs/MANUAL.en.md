@@ -2,7 +2,7 @@
 
 *Wersja polska: [PODRECZNIK.pl.md](PODRECZNIK.pl.md)*
 
-Program version: **3.0.0** (Godot 4.6). This manual covers the whole path "building from the map → 3D model → texture from ChatGPT →
+Program version: **3.0.1** (Godot 4.6). This manual covers the whole path "building from the map → 3D model → texture from ChatGPT →
 roof → chimneys → export (GLB / glTF / T3D) → `.mgdot` project file" and what to check while testing.
 **Note:** the program interface is in Polish; button and section names are quoted in Polish with a translation in brackets where it helps.
 
@@ -16,7 +16,7 @@ roof → chimneys → export (GLB / glTF / T3D) → `.mgdot` project file" and w
    roof, annexes), every picture straightened, cleaned and at one scale.
 4. You point the program at that canvas. It cuts the pictures out of the sectors (or frames), assigns the codes S1–S8, lays them out at real size
    and maps them onto walls and roof. Every surface can be fixed by hand (UV editor).
-5. In the **Dach** (roof) tab you draw the roof profile **on the photo of the gable wall** (gable, mansard, hips) and press GENERUJ DACH (generate roof).
+5. In the **Dach** (roof) tab you draw the roof profile **on the photo of the gable wall** (gable, mansard, hips) and press  (generate roof).
    The **chimney** generator puts chimneys on the roof.
 6. Export: **GLB** and **glTF** (with metadata) and **T3D for the MaSzyna train simulator** (models, TGA textures + MAT, .inc file, nodebank entry).
 7. The whole state is saved as one **`.mgdot`** file (a zip under its own extension) that opens on any computer.
@@ -144,25 +144,34 @@ A custom atlas JSON (`textures/atlas_wroniawy.json` is the example) still works 
 
 ## 8. Step 4 – Roof and chimneys
 
-### 8.1 The "Dach" section
-Type (gable / flat), height above the eaves, overhang, roof thickness, ridge direction.
+### 8.1 Roof type and the "Dach" section
+**Typ dachu** (roof type): *Dwuspadowy* (gable), *Kopertowy (4 połacie)* (hip, four slopes), *Własny – kierunki spadków* (custom – slope directions), *Płaski* (flat). Plus height above the eaves, overhang, thickness and ridge direction.
+**The roof height field always works**: also on a drawn roof (the profile is scaled) and on a custom roof (the slopes are scaled). Changing the type replaces a previously drawn roof.
+Fields with ↺ keep a fixed slot – the panel layout no longer jumps when you change a value.
 
-### 8.2 "Dach – rysuj i generuj…" (draw and generate the roof)
+### 8.2 "Dach dwuspadowy – profil na zdjęciu szczytu…" (gable roof – profile on the gable photo)
 
-![Roof generator](img/roof-gen.png)
+![Roof editor](img/roof-gen.png)
 
 The window has a **side view** (top) and a **top view**. The side view shows the **real photo of the gable wall** (panel S3 or S4) at true scale – you draw the roof
-on it instead of guessing. The program measures the eaves line (pink) and the apex on the picture.
+on it instead of guessing. The program measures the eaves line (pink) and the apex on the picture. Without a gable picture (a canvas without S3/S4, or no texture loaded) the background is grey with the note "brak zdjęcia szczytu" (no gable picture).
 
 - **Profile vertices** (orange, up to 7): drag; double-click on a line adds a break (mansard); right-click removes.
-- **Blue dots on the eaves**: dragging up/down fits the roof height to the picture (disabled without a picture – then type the height).
-- **Yellow ends** – roof overhang beyond the walls; fields: left/right eaves, gable overhang.
-- **Top view**: drag the ridge sideways or its ends (hips); fields "Walm: kalenica cofnięta od szczytu 1/2" (ridge set back from gable 1/2).
-- **Kąt ze zdjęcia szczytu** (angle from the gable picture) and **Wysokość ścian ze zdjęcia** (wall height from the picture) measure from the photo. **Zeruj do zwykłego dwuspadowego** resets to a plain gable.
-- **GENERUJ DACH** builds the roof from the profile; gable walls and chimneys follow it. The result is visible in the 3D view at once.
+- **Blue dots on the eaves**: dragging up/down fits the roof height to the picture. **Yellow ends** – roof overhang; fields: left/right eaves, gable overhang.
+- **Top view**: drag the ridge sideways or its ends (hips).
+- **Kąt ze zdjęcia szczytu**, **Wysokość ścian ze zdjęcia**, **Zeruj do zwykłego dwuspadowego**.
+- **Changes are applied to the model at once** (with a short delay after the last change) – there is no "generate" button. `Esc` / × closes the window and **restores the roof it was opened with**; **Zamknij** keeps the changes.
 
-Without a gable picture (a canvas without S3/S4) the window works on an empty background with the message "brak zdjęcia szczytu" (no gable picture). **Prosty dach: kąt i okap…** is the old editor
-(angle, asymmetry, eaves) – it does not work on a generated roof.
+### 8.2a Hip roof and custom roof
+
+![Custom roof](img/roof-custom.png)
+
+- **Kopertowy** (hip): four slopes down to the eaves; the height comes from the "Wysokość dachu" field.
+- **Własny – kierunki spadków** (button "Dach własny – rzut z góry, kierunki spadków…"): a window with the top view of the building. Every edge has an **arrow**
+  showing which way its slope runs, with the angle in degrees. Click an edge (yellow = selected), set its **spadek** (slope) or tick **Ściana szczytowa** (gable wall: an edge without a slope).
+  Orange dots show the computed ridges and hips. **Ścięcie szczytu** makes a flat top at the given height. **Ten sam spadek na wszystkich** / **Zeruj do kopertowego** speed things up.
+  The rule: the slope of every edge rises from its eaves line inwards, and the roof is the lower envelope of all slopes (this is how hip, gable, pyramid and half-hip roofs all arise).
+  Edges at concave corners (an L-shaped outline) are skipped. Changes show on the model at once; `Esc` / **Anuluj** restores the previous roof.
 
 ### 8.3 Chimney generator
 A window with a top view and two side views: **Dodaj / Powiel / Usuń** (add / duplicate / delete) a chimney, typed dimensions (width, length, height above the roof, X and Z position),
@@ -192,6 +201,8 @@ The **Edytor mapowania – całe okno** works like "Unwrap UVW": **Wycinek** mod
 | **Eksportuj model do T3D (MaSzyna)** | `exports/t3d/<name>/` – see [FORMATS.md](FORMATS.md) |
 | **Otwórz folder eksportów** | opens the exports folder |
 
+The **Eksport jako paczka ZIP** checkbox (above the buttons): after every export a `.zip` archive is written next to the files (GLB: `<name>.zip` with the GLB and meta; glTF and T3D: a zip of the whole folder). The loose files stay.
+
 T3D options (in the same section): sub-folder (e.g. `mieszkalne`), maximum texture side (512–4096, default 2048), smoke sources on chimneys,
 night-light submodel. Metadata description: [MODEL_META.md](MODEL_META.md).
 
@@ -217,7 +228,7 @@ Further: **Co pokazać** (show: walls, roof, ground, helper grid), **Światło i
 2. **Załaduj przykładowy budynek (L)** (Place → outline from file) or pick a building on the map. Build the model. The tabs unlock.
 3. Textures → **Generuj prompt** → check there are 8 sectors S1–S8, the px/m scale, no JSON. Make the canvas in ChatGPT, save it, point to it in **2. Płótno od GPT**.
    Check the status ("Płótno od GPT: n paneli"), **Przyporządkuj panele…**, **Podgląd cięcia**. Loading the same file again must be instant.
-4. Roof: **Dach – rysuj i generuj…** – the gable photo at true scale; drag vertices, add a break and a hip; GENERUJ DACH; check the 3D model.
+4. Roof: **Dach – rysuj i generuj…** – the gable photo at true scale; drag vertices, add a break and a hip; ; check the 3D model.
 5. **Kominy – generator…**: add a chimney, place it in the top and side views, choose a wall fragment, Zapisz.
 6. Click a wall: move/scale, change the panel, photo rectification, Ctrl+Z/Y.
 7. View: switch on **Krawędzie siatki** and **Pokaż wierzchołki**; change thickness and colours.
@@ -242,7 +253,7 @@ Further: **Co pokazać** (show: walls, roof, ground, helper grid), **Światło i
 
 ```
 godot --headless --path . --import
-godot --headless --path . --script res://tools/selftest.gd      # 316 checks, exit code 0 = OK
+godot --headless --path . --script res://tools/selftest.gd      # 326 checks, exit code 0 = OK
 ```
 They cover: projection, settings, frame and sector detection, sheet layout, prompt generator, roof profile, chimneys, GLB/glTF export, **T3D export**
 (vertex order, normals, LODs, TGA), the **`.mgdot` format** (packing, unpacking, `../` protection, format versions), the edge overlay. Geoportal mock: `tools/mock_geoportal.py` + `tools/e2e_mock.gd`.

@@ -1,5 +1,19 @@
 # Historia zmian / Changelog
 
+## 3.0.1 (2026-10-20)
+
+**PL**
+- Edytor dachu **stosuje zmiany na bieżąco** (bez „GENERUJ DACH”); pole „Wysokość dachu” działa także na dachu narysowanym i własnym. Usunięty zdublowany przycisk.
+- Nowe typy dachu: **kopertowy** i **własny** (rzut z góry, strzałka spadku na każdej krawędzi, ściany szczytowe, ścięcie szczytu).
+- Przyciski ↺ mają stałe miejsce – panel nie skacze. Zdjęcie szczytu: dodatkowo S3/S4 jako zapas.
+- Opcja **Eksport jako paczka ZIP** (GLB, glTF, T3D).
+
+**EN**
+- The roof editor **applies changes live** (no "GENERUJ DACH"); the roof height field also works on a drawn and a custom roof. Duplicate button removed.
+- New roof types: **hip** and **custom** (top view, a slope arrow on every edge, gable walls, flat-top cap).
+- ↺ buttons keep their slot – the panel no longer jumps. Gable picture: S3/S4 as a fallback.
+- **Export as ZIP package** option (GLB, glTF, T3D).
+
 ## 3.0.0 (2026-10-19)
 
 **PL**
@@ -12,7 +26,7 @@
 - **Plik projektu `.mgdot`** (zip z manifestem, miniaturą i promptem), zapis atomowy, lista ostatnich plików z miniaturami, ochrona przed `../`, kontrola wersji formatu.
 - **Eksport glTF** (`.gltf` + `.bin` + tekstury) i **eksport T3D dla MaSzyny** (LOD0/LOD1, TGA + MAT, `.inc`, nodebank, źródła dymu, `light_on00`).
 - Metadane: `part_roofs` (profil i walmy dachu). Usunięte: `surfaces`, `openings`, `described_building`.
-- Dokumentacja przepisana w całości, po polsku i angielsku. Selftest: 316 sprawdzeń.
+- Dokumentacja przepisana w całości, po polsku i angielsku. Selftest: 326 sprawdzeń.
 
 **EN**
 
@@ -24,7 +38,7 @@
 - **Project file `.mgdot`** (zip with manifest, thumbnail and prompt), atomic write, recent-files list with thumbnails, `../` protection, format version check.
 - **glTF export** (`.gltf` + `.bin` + textures) and **T3D export for MaSzyna** (LOD0/LOD1, TGA + MAT, `.inc`, nodebank, smoke sources, `light_on00`).
 - Metadata: `part_roofs` (roof profile and hips). Removed: `surfaces`, `openings`, `described_building`.
-- Documentation rewritten completely, in Polish and English. Selftest: 316 checks.
+- Documentation rewritten completely, in Polish and English. Selftest: 326 checks.
 
 ## 2.x
 

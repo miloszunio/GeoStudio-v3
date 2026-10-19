@@ -19,7 +19,8 @@ główna scena tworzy je w `_ready()`. Ustawienia są opisane jednym schematem (
 | `sheet_layout.gd` | `SheetLayout` | układ arkusza w skali rzeczywistej |
 | `texture_atlas.gd`, `atlas_slicer.gd` | `TextureAtlas`, `AtlasSlicer` | regiony tekstury, automatyczne cięcie |
 | `roof_gen.gd`, `roof_gen_editor.gd` | `RoofGen`, `RoofGenEditor` | profil dachu → płaszczyzny; okno rysowania na zdjęciu szczytu, `picture_profile` mierzy zdjęcie |
-| `roof_flow.gd`, `roof_editor.gd` | `RoofFlow`, `RoofEditor` | okna dachu (generator i dawny „prosty dach”) |
+| `roof_flow.gd`, `roof_editor.gd` | `RoofFlow`, `RoofEditor` | okna dachu (profil, dach własny, dawny „prosty dach”) |
+| `roof_custom.gd`, `roof_custom_editor.gd` | `RoofCustom`, `RoofCustomEditor` | dach kopertowy i własny: połać z każdej krawędzi, dolna obwiednia; okno ze strzałkami spadków |
 | `chimney_flow.gd`, `chimney_editor.gd` | `ChimneyFlow`, `ChimneyEditor` | kominy: dane (`model_chimneys`), siatka, okno z trzema rzutami |
 | `mapping_flow.gd`, `uv_editor.gd`, `face_panel.gd`, `face_preview.gd`, `face_store.gd`, `rectify.gd` | | korekta powierzchni: panel, edytor UV, prostowanie zdjęcia (homografia), magazyn korekt z undo |
 | `edge_overlay.gd` | `EdgeOverlay` | nakładka krawędzi i wierzchołków („Edged Faces”): geometria w przestrzeni ekranu, dwa przebiegi (widoczne / zasłonięte) |
@@ -36,7 +37,7 @@ Ustawienia ukryte (część stanu projektu): `tex_panels`, `tex_sheet_layout`, `
 Wątki: analiza płótna (wykrywanie, układanie, zapis JPG) wykonuje się w głównym wątku, ale jest **pomijana przy powtórnym wczytaniu** dzięki kluczowi `tex_sheet_key`
 (plik, panele, wymiary). Największy koszt – kodowanie PNG 4096² (~7 s) – zastąpiono zapisem JPG (~0,3 s).
 
-Testy: `tools/selftest.gd` (bez okna, 316 sprawdzeń), `tools/e2e_mock.gd` + `tools/mock_geoportal.py`, skrypty `tools/*_shot.gd` (zrzuty ekranu), `tools/mgdot_flow_test.gd` (zapis i odczyt `.mgdot` przez prawdziwy przepływ).
+Testy: `tools/selftest.gd` (bez okna, 326 sprawdzeń), `tools/e2e_mock.gd` + `tools/mock_geoportal.py`, skrypty `tools/*_shot.gd` (zrzuty ekranu), `tools/mgdot_flow_test.gd` (zapis i odczyt `.mgdot` przez prawdziwy przepływ).
 
 ---
 
@@ -55,7 +56,8 @@ the main scene creates them in `_ready()`. All settings are described by one sch
 | `sheet_layout.gd` | `SheetLayout` | real-scale sheet layout |
 | `texture_atlas.gd`, `atlas_slicer.gd` | `TextureAtlas`, `AtlasSlicer` | texture regions, automatic slicing |
 | `roof_gen.gd`, `roof_gen_editor.gd` | `RoofGen`, `RoofGenEditor` | roof profile → planes; the window for drawing on the gable picture, `picture_profile` measures the picture |
-| `roof_flow.gd`, `roof_editor.gd` | `RoofFlow`, `RoofEditor` | roof windows (the generator and the old "simple roof") |
+| `roof_flow.gd`, `roof_editor.gd` | `RoofFlow`, `RoofEditor` | roof windows (profile, custom roof, the old "simple roof") |
+| `roof_custom.gd`, `roof_custom_editor.gd` | `RoofCustom`, `RoofCustomEditor` | hip and custom roof: a plane from every edge, lower envelope; the window with slope arrows |
 | `chimney_flow.gd`, `chimney_editor.gd` | `ChimneyFlow`, `ChimneyEditor` | chimneys: data (`model_chimneys`), mesh, the window with three views |
 | `mapping_flow.gd`, `uv_editor.gd`, `face_panel.gd`, `face_preview.gd`, `face_store.gd`, `rectify.gd` | | surface editing: panel, UV editor, photo rectification (homography), edit store with undo |
 | `edge_overlay.gd` | `EdgeOverlay` | edge and vertex overlay ("Edged Faces"): screen-space geometry, two passes (visible / hidden) |
@@ -72,4 +74,4 @@ Hidden settings (part of the project state): `tex_panels`, `tex_sheet_layout`, `
 Threading: the canvas analysis (detection, layout, JPG write) runs on the main thread but is **skipped on reload** thanks to the `tex_sheet_key` key
 (file, panels, dimensions). The biggest cost – encoding a 4096² PNG (~7 s) – was replaced by writing a JPG (~0.3 s).
 
-Tests: `tools/selftest.gd` (windowless, 316 checks), `tools/e2e_mock.gd` + `tools/mock_geoportal.py`, `tools/*_shot.gd` screenshot scripts, `tools/mgdot_flow_test.gd` (saving and reading `.mgdot` through the real flow).
+Tests: `tools/selftest.gd` (windowless, 326 checks), `tools/e2e_mock.gd` + `tools/mock_geoportal.py`, `tools/*_shot.gd` screenshot scripts, `tools/mgdot_flow_test.gd` (saving and reading `.mgdot` through the real flow).

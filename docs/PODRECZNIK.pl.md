@@ -2,7 +2,7 @@
 
 *English version: [MANUAL.en.md](MANUAL.en.md)*
 
-Wersja programu: **3.0.0** (Godot 4.6). Dokument opisuje całą ścieżkę „budynek z mapy → model 3D → tekstura z ChatGPT →
+Wersja programu: **3.0.1** (Godot 4.6). Dokument opisuje całą ścieżkę „budynek z mapy → model 3D → tekstura z ChatGPT →
 dach → kominy → eksport (GLB / glTF / T3D) → plik projektu `.mgdot`” oraz to, co dokładnie sprawdzać podczas testów.
 
 ---
@@ -16,7 +16,7 @@ dach → kominy → eksport (GLB / glTF / T3D) → plik projektu `.mgdot`” ora
 4. Wskazujesz płótno. Program sam wycina obrazy z sektorów (albo z ramek), nadaje kody S1–S8, układa je w skali
    rzeczywistej i nakłada na ściany i dach. Każdą powierzchnię możesz poprawić ręcznie (edytor UV).
 5. W zakładce **Dach** rysujesz profil dachu **na zdjęciu ściany szczytowej** (dwuspadowy, mansardowy, naczółki) i klikasz
-   GENERUJ DACH. Generator **kominów** stawia kominy na dachu.
+   . Generator **kominów** stawia kominy na dachu.
 6. Eksport: **GLB** i **glTF** (z metadanymi) oraz **T3D dla symulatora MaSzyna** (modele, tekstury TGA + MAT, plik .inc, wpis do nodebank).
 7. Cały stan zapisujesz jako jeden plik **`.mgdot`** (zip pod własnym rozszerzeniem) i otwierasz go później na dowolnym komputerze.
 
@@ -130,7 +130,7 @@ Status mówi, ile paneli znaleziono i których brakuje.
 - **Przyporządkuj panele…** – edytor: zmiana kodu panelu, przesunięcie/zmiana ramki, dodanie lub usunięcie panelu. Ręczne poprawki są zapamiętane w projekcie i mają pierwszeństwo.
 - **Skala arkusza (px/m)** – informacja o skali ułożonego arkusza; ustawia się sama.
 - **Podgląd cięcia na regiony…** – pokazuje regiony i ich nazwy. **Usuń teksturę** – model bez tekstur.
-- Teksturowanie działa „jak prostopadłościan bez dachu”: ściany dostają S1–S4, dach osobno (S5, albo generator dachu – patrz niżej).
+- Teksturowanie działa „jak prostopadłościan bez dachu”: ściany dostają S1–S4, dach osobno (S5, kształt z zakładki Dach).
 - **Obraz ściany pokrywa całą ścianę** (bez powtarzania i przycinania). Powtarzanie powstaje tylko z korekty powierzchni (skala < 100 %).
 
 ### 7.3 Pozostałe sekcje karty
@@ -143,25 +143,34 @@ Własny atlas JSON (`textures/atlas_wroniawy.json` jako wzór) nadal działa jak
 
 ## 8. Krok 4 – Dach i kominy
 
-### 8.1 Sekcja „Dach”
-Typ (dwuspadowy / płaski), wysokość ponad okap, wysunięcie poza ściany, grubość dachu, kierunek kalenicy.
+### 8.1 Typ dachu i sekcja „Dach”
+**Typ dachu**: *Dwuspadowy*, *Kopertowy (4 połacie)*, *Własny – kierunki spadków*, *Płaski*. Do tego wysokość ponad okap, wysunięcie poza ściany, grubość i kierunek kalenicy.
+**Wysokość dachu działa zawsze**: także na dachu narysowanym (profil jest skalowany) i na dachu własnym (spadki są skalowane). Zmiana typu zastępuje wcześniej narysowany dach.
+Pola z ↺ mają stałe miejsce – układ panelu nie skacze, gdy zmieniasz wartość.
 
-### 8.2 „Dach – rysuj i generuj…”
+### 8.2 „Dach dwuspadowy – profil na zdjęciu szczytu…”
 
-![Generator dachu](img/roof-gen.png)
+![Edytor dachu](img/roof-gen.png)
 
 Okno ma **rzut boczny** (u góry) i **rzut z góry**. Rzut boczny pokazuje **prawdziwe zdjęcie ściany szczytowej** (panel S3 lub S4) w rzeczywistej skali – dach rysujesz
-na nim, nie „na oko”. Program mierzy na zdjęciu linię okapu (różowa) i kalenicę.
+na nim, nie „na oko”. Program mierzy na zdjęciu linię okapu (różowa) i kalenicę. Bez zdjęcia szczytu (płótno bez S3/S4 albo bez wczytanej tekstury) tło jest szare z podpisem „brak zdjęcia szczytu”.
 
 - **Wierzchołki profilu** (pomarańczowe, do 7): przeciągaj; dwuklik na linii dodaje załamanie (mansarda); prawy przycisk usuwa.
-- **Niebieskie kropki na okapie**: w górę/w dół dopasowują wysokość dachu do zdjęcia (wyłączone, gdy brak zdjęcia – wtedy ustawiasz wysokość polem).
-- **Żółte końce** – wysunięcie dachu poza ściany; pola: okap lewy/prawy, wysunięcie przy szczytach.
-- **Rzut z góry**: przeciągnij kalenicę w bok albo jej końce (naczółki/walmy); pola „Walm: kalenica cofnięta od szczytu 1/2”.
-- **Kąt ze zdjęcia szczytu** i **Wysokość ścian ze zdjęcia** – pomiar ze zdjęcia. **Zeruj do zwykłego dwuspadowego** – wraca prosty dach.
-- **GENERUJ DACH** – buduje dach z profilu; ściany szczytowe i kominy podążają za nim. Wynik widać od razu w widoku 3D.
+- **Niebieskie kropki na okapie**: w górę/w dół dopasowują wysokość dachu do zdjęcia. **Żółte końce** – wysunięcie dachu; pola: okap lewy/prawy, wysunięcie przy szczytach.
+- **Rzut z góry**: przeciągnij kalenicę w bok albo jej końce (naczółki/walmy).
+- **Kąt ze zdjęcia szczytu**, **Wysokość ścian ze zdjęcia**, **Zeruj do zwykłego dwuspadowego**.
+- **Zmiany stosują się na modelu od razu** (z krótkim opóźnieniem po ostatniej zmianie) – nie ma przycisku „generuj”. `Esc` / × zamyka okno i **przywraca dach sprzed otwarcia**; **Zamknij** zostawia zmiany.
 
-Bez zdjęcia szczytu (płótno bez S3/S4) okno działa na pustym tle z komunikatem „brak zdjęcia szczytu”. **Prosty dach: kąt i okap…** to dawny edytor
-(kąt, asymetria, okap) – nie działa na dachu wygenerowanym.
+### 8.2a Dach kopertowy i własny
+
+![Dach własny](img/roof-custom.png)
+
+- **Kopertowy**: cztery połacie schodzące do okapu; wysokość z pola „Wysokość dachu”.
+- **Własny – kierunki spadków** (przycisk „Dach własny – rzut z góry, kierunki spadków…”): okno z rzutem budynku z góry. Przy każdej krawędzi jest **strzałka**
+  pokazująca, w którą stronę opada jej połać, z kątem w stopniach. Kliknij krawędź (żółta = zaznaczona), ustaw **spadek** albo zaznacz **Ścianę szczytową** (krawędź bez połaci).
+  Pomarańczowe kropki pokazują wyliczone kalenice i narożniki. **Ścięcie szczytu** robi płaski wierzch na podanej wysokości. **Ten sam spadek na wszystkich** / **Zeruj do kopertowego** przyspieszają pracę.
+  Zasada: połać każdej krawędzi rośnie od jej linii okapu do środka, dach to dolna obwiednia wszystkich połaci (tak powstaje kopertowy, dwuspadowy, piramidalny, półwalmowy).
+  Krawędzie przy wklęsłych narożnikach (obrys w kształcie L) są pomijane. Zmiany widać na modelu od razu; `Esc` / **Anuluj** przywraca poprzedni dach.
 
 ### 8.3 Kominy – generator
 Okno z rzutem z góry i dwoma rzutami bocznymi: **Dodaj / Powiel / Usuń** komin, wymiary z palca (szerokość, długość, wysokość nad dachem, położenie X i Z),
@@ -191,6 +200,8 @@ Kliknij ścianę lub połać w widoku 3D. Panel po prawej: **Mapowanie** (przesu
 | **Eksportuj model do T3D (MaSzyna)** | `exports/t3d/<nazwa>/` – patrz [FORMATS.md](FORMATS.md) |
 | **Otwórz folder eksportów** | |
 
+Pole **Eksport jako paczka ZIP** (nad przyciskami): po każdym eksporcie obok plików powstaje też archiwum `.zip` (GLB: `<nazwa>.zip` z GLB i meta; glTF i T3D: zip całego folderu). Luźne pliki zostają.
+
 Opcje T3D (nad przyciskiem lub w wyszukiwarce ustawień): podfolder (np. `mieszkalne`), największy bok tekstury (512–4096, domyślnie 2048), źródła dymu na kominach,
 submodel świateł nocnych. Opis metadanych: [MODEL_META.md](MODEL_META.md).
 
@@ -216,7 +227,7 @@ Dalej: **Co pokazać** (elewacje, dach, podłoże, siatka pomocnicza), **Świat�
 2. **Załaduj przykładowy budynek (L)** (Miejsce → Obrys z pliku) albo wskaż budynek na mapie. Zbuduj model. Karty się odblokowały.
 3. Tekstury → **Generuj prompt** → sprawdź, że jest 8 sektorów S1–S8, skala px/m, brak JSON-a. Wykonaj płótno w ChatGPT, zapisz, wskaż w **2. Płótno od GPT**.
    Sprawdź status („Płótno od GPT: n paneli”), **Przyporządkuj panele…**, **Podgląd cięcia**. Ponowne wczytanie tego samego pliku ma być natychmiastowe.
-4. Dach: **Dach – rysuj i generuj…** – zdjęcie szczytu w skali; przeciągnij wierzchołki, dodaj załamanie, walm; GENERUJ DACH; sprawdź model 3D.
+4. Dach: **Dach – rysuj i generuj…** – zdjęcie szczytu w skali; przeciągnij wierzchołki, dodaj załamanie, walm; ; sprawdź model 3D.
 5. **Kominy – generator…**: dodaj komin, ustaw w rzucie z góry i z boku, wybierz fragment ściany, Zapisz.
 6. Kliknij ścianę: przesuń/skaluj, zmień panel, Prostowanie zdjęcia, Ctrl+Z/Y.
 7. Widok: włącz **Krawędzie siatki** i **Pokaż wierzchołki**; zmień grubość i kolory.
@@ -241,8 +252,8 @@ Dalej: **Co pokazać** (elewacje, dach, podłoże, siatka pomocnicza), **Świat�
 
 ```
 godot --headless --path . --import
-godot --headless --path . --script res://tools/selftest.gd      # 316 sprawdzeń, kod wyjścia 0 = OK
+godot --headless --path . --script res://tools/selftest.gd      # 326 sprawdzeń, kod wyjścia 0 = OK
 ```
-Obejmują m.in.: projekcję, ustawienia, wykrywanie ramek i sektorów, układ arkusza, generator promptu, profil dachu, kominy, eksport GLB/glTF, **eksport T3D**
+Obejmują m.in.: projekcję, ustawienia, wykrywanie ramek i sektorów, układ arkusza, generator promptu, profil dachu, dachy kopertowy i własny, kominy, eksport GLB/glTF, **eksport T3D**
 (kolejność wierzchołków, normalne, LOD-y, TGA), **format `.mgdot`** (pakowanie, rozpakowanie, ochrona przed `../`, wersje formatu), nakładkę krawędzi. Atrapa Geoportalu: `tools/mock_geoportal.py` + `tools/e2e_mock.gd`.
 Skrypty `tools/*_shot.gd` robią zrzuty ekranu (`SHOT_DIR=...`). Architektura: [ARCHITECTURE.md](ARCHITECTURE.md).

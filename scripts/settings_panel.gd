@@ -636,9 +636,16 @@ func _make_reset(key: String) -> Button:
 	b.add_theme_color_override("font_color", Color("#ffc46b"))
 	b.add_theme_color_override("font_hover_color", Color("#ffc46b"))
 	b.pressed.connect(func() -> void: settings.reset_key(key))
-	b.visible = not _is_default(key)
+	_show_reset(b, not _is_default(key))
 	(_ctl[key] as Dictionary)["reset"] = b
 	return b
+
+
+## The button always keeps its place (invisible, not clickable) so that rows do not jump when a value changes.
+func _show_reset(b: Control, on: bool) -> void:
+	b.modulate.a = 1.0 if on else 0.0
+	b.mouse_filter = Control.MOUSE_FILTER_STOP if on else Control.MOUSE_FILTER_IGNORE
+	b.focus_mode = Control.FOCUS_ALL if on else Control.FOCUS_NONE
 
 
 func _is_default(key: String) -> bool:
@@ -647,7 +654,7 @@ func _is_default(key: String) -> bool:
 
 func _update_reset(key: String) -> void:
 	if _ctl.has(key) and _ctl[key].has("reset"):
-		(_ctl[key]["reset"] as Control).visible = not _is_default(key)
+		_show_reset(_ctl[key]["reset"] as Control, not _is_default(key))
 
 func _user_set(key: String, value: Variant) -> void:
 	if _syncing:

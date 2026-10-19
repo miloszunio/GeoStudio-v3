@@ -1,11 +1,11 @@
 class_name RoofGenEditor
 extends VBoxContainer
-## "Dach" window: draw the roof, then press GENERUJ DACH.
+## "Dach" window: draw the roof profile; every change is applied to the model (debounced).
 ##   Side view (left): the gable picture with the roof profile on it. Drag the round vertices, double-click a line to add
 ##   a break (mansard), right-click a vertex to remove it. The yellow dots at the ends set how far the roof overhangs.
 ##   Plan view (right): the footprint with the ridge line. Drag the ridge sideways, drag its ends to stop it short of the
 ##   gable (a hipped end).
-## Nothing changes in the model until GENERUJ DACH; Zamknij without it keeps the previous roof.
+## Changes are live; Esc / × restores the roof the window was opened with.
 
 signal finished(saved: bool)
 
@@ -32,6 +32,8 @@ var _plan: Control
 var _ctl := {}
 var _drag := ""
 var _busy := false
+var _live := false               # after the window is set up every change is applied to the model (debounced)
+var _timer: Timer
 var _zoom := 1.0
 var _pan := Vector2.ZERO
 var _status: Label
@@ -52,6 +54,12 @@ func setup(main_scene) -> void:
 	_read_state()
 	_build()
 	_sync()
+	_timer = Timer.new()
+	_timer.one_shot = true
+	_timer.wait_time = 0.25
+	_timer.timeout.connect(generate)
+	add_child(_timer)
+	_live = true
 
 
 ## The gable picture is shown at its TRUE scale (its width = the span of the gable wall, same scale in both directions),
@@ -117,7 +125,7 @@ func _build() -> void:
 	title.add_theme_font_size_override("font_size", 16)
 	add_child(title)
 	var hint := Label.new()
-	hint.text = "Rzut boczny: przeciągaj pomarańczowe wierzchołki, dwuklik na linii dodaje załamanie (dach mansardowy), prawy przycisk na wierzchołku usuwa go; niebieskie kropki na okapie (w górę/w dół) dopasowują wysokość dachu do zdjęcia; żółte – wysunięcie dachu. Rzut z góry: przeciągnij kalenicę w bok albo jej końce (walm). Kółko: zoom, środkowy przycisk: przesuwanie. Model zmieni się po kliknięciu GENERUJ DACH."
+	hint.text = "Rzut boczny: przeciągaj pomarańczowe wierzchołki, dwuklik na linii dodaje załamanie (dach mansardowy), prawy przycisk na wierzchołku usuwa go; niebieskie kropki na okapie (w górę/w dół) dopasowują wysokość dachu do zdjęcia; żółte – wysunięcie dachu. Rzut z góry: przeciągnij kalenicę w bok albo jej końce (walm). Kółko: zoom, środkowy przycisk: przesuwanie. Zmiany od razu pokazują się na modelu."
 	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	hint.add_theme_color_override("font_color", Color(0.7, 0.75, 0.85))
 	add_child(hint)
@@ -208,13 +216,6 @@ func _build() -> void:
 		sel = -1
 		_sync())
 	tools.add_child(reset)
-	var gen_btn := Button.new()
-	gen_btn.text = "GENERUJ DACH"
-	gen_btn.theme_type_variation = "PrimaryButton"
-	gen_btn.custom_minimum_size.y = 46
-	gen_btn.pressed.connect(generate)
-	side.add_child(gen_btn)
-	_ctl["gen"] = gen_btn
 	_status = Label.new()
 	_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_status.add_theme_font_size_override("font_size", 12)
@@ -349,6 +350,8 @@ func _sync() -> void:
 	_busy = false
 	_side.queue_redraw()
 	_plan.queue_redraw()
+	if _live and _timer != null:
+		_timer.start()
 
 
 func _peak_index() -> int:
@@ -387,7 +390,7 @@ func generate() -> void:
 		"model_roof_gen": RoofGen.to_json(list),
 	})
 	generated = true
-	_status.text = "Dach wygenerowany (%d połaci%s). Sprawdź w widoku 3D; zmień profil i kliknij ponownie, żeby poprawić." % [prof.size() - 1, ", walm" if (_single() and (ra > 0.02 or rb > 0.02)) else ""]
+	_status.text = "Dach zastosowany na modelu (%d połaci%s)." % [prof.size() - 1, ", walm" if (_single() and (ra > 0.02 or rb > 0.02)) else ""]
 	app._set_status("Dach wygenerowany z profilu: kalenica %.2f m nad okapem." % _ridge_h())
 
 

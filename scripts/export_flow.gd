@@ -68,6 +68,40 @@ func export_info() -> Dictionary:
 	return info
 
 
+## Zips a folder (or a list of files) into `zip_path`; paths inside the archive are relative to `root`.
+static func zip_files(root: String, files: Array, zip_path: String) -> bool:
+	var z := ZIPPacker.new()
+	if z.open(zip_path) != OK:
+		return false
+	for rel in files:
+		var p := root.path_join(str(rel))
+		if not FileAccess.file_exists(p):
+			continue
+		z.start_file(str(rel))
+		z.write_file(FileAccess.get_file_as_bytes(p))
+		z.close_file()
+	z.close()
+	return true
+
+
+static func list_files(dir: String, rel := "") -> Array:
+	var out: Array = []
+	var here := dir if rel == "" else dir.path_join(rel)
+	for d in DirAccess.get_directories_at(here):
+		out.append_array(list_files(dir, d if rel == "" else rel.path_join(d)))
+	for f in DirAccess.get_files_at(here):
+		out.append(f if rel == "" else rel.path_join(f))
+	return out
+
+
+## When the "export as ZIP" option is on: packs the folder into <folder>.zip next to it.
+func _maybe_zip_dir(dir: String) -> String:
+	if not app.settings.b("export_zip"):
+		return ""
+	var zp := dir.rstrip("/") + ".zip"
+	return zp if zip_files(dir, list_files(dir), zp) else ""
+
+
 func _safe_base() -> String:
 	var base = app.project.project_name() if app.project.is_open() else "model"
 	var safe := ""
@@ -92,7 +126,15 @@ func _export_glb() -> void:
 	var res = ModelExporter.export_glb(app.building_root, export_info(), path)
 	if res["ok"]:
 		app.project.log_event("Eksport GLB: " + app.project.relative(path))
-		app._set_status("Zapisano %s (%d węzłów) + .meta.json." % [path, int(res["nodes"])])
+		var zmsg := ""
+		if app.settings.b("export_zip"):
+			var zp := path.get_basename() + ".zip"
+			var names: Array = [path.get_file()]
+			if FileAccess.file_exists(path.get_basename() + ".meta.json"):
+				names.append(path.get_file().get_basename() + ".meta.json")
+			if zip_files(path.get_base_dir(), names, zp):
+				zmsg = " Paczka ZIP: " + zp
+		app._set_status("Zapisano %s (%d węzłów) + .meta.json.%s" % [path, int(res["nodes"]), zmsg])
 	else:
 		app._set_status("Eksport nie udał się: %s" % res["error"])
 
@@ -107,7 +149,8 @@ func _export_gltf() -> void:
 	var res = ModelExporter.export_glb(app.building_root, export_info(), path)
 	if res["ok"]:
 		app.project.log_event("Eksport glTF: " + app.project.relative(path))
-		app._set_status("Zapisano %s (+ plik .bin i tekstury) oraz .meta.json." % path)
+		var zp := _maybe_zip_dir(dir)
+		app._set_status("Zapisano %s (+ plik .bin i tekstury) oraz .meta.json.%s" % [path, (" Paczka ZIP: " + zp) if zp != "" else ""])
 	else:
 		app._set_status("Eksport nie udał się: %s" % res["error"])
 
@@ -129,6 +172,7 @@ func _export_t3d() -> void:
 		"smoke": app.settings.b("export_t3d_smoke"), "lights": app.settings.b("export_t3d_lights"), "names": names})
 	if res["ok"]:
 		app.project.log_event("Eksport T3D: " + app.project.relative(dir))
-		app._set_status("T3D zapisany w %s (LOD0 %d wierzch., LOD1 %d, tekstur: %d)." % [dir, int(res["verts0"]), int(res["verts1"]), (res["textures"] as Array).size()])
+		var zp := _maybe_zip_dir(dir)
+		app._set_status("T3D zapisany w %s (LOD0 %d wierzch., LOD1 %d, tekstur: %d).%s" % [dir, int(res["verts0"]), int(res["verts1"]), (res["textures"] as Array).size(), (" Paczka ZIP: " + zp) if zp != "" else ""])
 	else:
 		app._set_status("Eksport T3D nie udał się: %s" % res["error"])

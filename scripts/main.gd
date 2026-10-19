@@ -660,8 +660,18 @@ func _on_setting_changed(key: String) -> void:
 		if key == "model_wall_height" and not _wall_internal and settings.b("model_walls_from_tex"):
 			settings.set_value("model_walls_from_tex", false)   # a hand-set wall height wins over the texture
 			return
+		if key == "model_roof_type":
+			var keep: Array = []
+			for e in RoofGen.list_from_json(settings.s("model_roof_gen")):
+				if int(e.get("part", 0)) != 0:
+					keep.append(e)
+			if keep.size() != RoofGen.list_from_json(settings.s("model_roof_gen")).size():
+				roof_apply_settings({"model_roof_gen": RoofGen.to_json(keep)})   # the chosen type replaces a drawn roof
+				return
 		if key == "model_roof_height":
-			if _roof_internal:
+			if _roof_internal or _roof_batch:
+				return
+			if _rescale_roof(settings.f("model_roof_height")):
 				return
 			if settings.b("model_roof_from_tex"):
 				settings.set_value("model_roof_from_tex", false)   # a hand-set height wins over the texture
@@ -785,8 +795,10 @@ func _on_action(id: String) -> void:
 			OS.shell_open(exporter._exports_dir())
 		"act_roof_from_tex":
 			_apply_roof_from_texture()
-		"act_roof_editor", "act_roof_editor2":
+		"act_roof_editor":
 			roofed.open()
+		"act_roof_custom":
+			roofed.open_custom()
 		"act_roof_simple":
 			roofed.open_simple()
 		"act_chimney_editor":
@@ -1976,7 +1988,19 @@ func _resolve_parts(parts: Array, pts_list: Array) -> Array:
 
 ## Parts that have a generated roof (the "Dach" window) get their planes; the rest keeps the simple roof.
 func _apply_roof_gen(rt: Array) -> void:
-	for gen in RoofGen.list_from_json(settings.s("model_roof_gen")):
+	var typ := settings.s("model_roof_type")
+	var gens: Array = RoofGen.list_from_json(settings.s("model_roof_gen"))
+	if typ == "custom":
+		_apply_roof_custom(rt)
+		return
+	if typ == "hip" and not rt.is_empty() and str(rt[0]["roof_kind"]) == "gable":
+		var has0 := false
+		for g0 in gens:
+			if int(g0.get("part", 0)) == 0:
+				has0 = true
+		if not has0:
+			gens.append(RoofCustom.hip_gen(2.0 * float(rt[0]["ridge_half"]), float(rt[0]["roof_h"])))   # four slopes: both ends are hipped
+	for gen in gens:
 		var i := int(gen.get("part", 0))
 		if i < 0 or i >= rt.size():
 			continue
@@ -1994,6 +2018,55 @@ func _apply_roof_gen(rt: Array) -> void:
 		P["planes"] = pl
 		P["roof_h"] = RoofGen.ridge_height(RoofGen.normalize(gen, span)["prof"])
 		P["gen"] = gen
+
+
+## The "Własny" roof of the main part: a plane from every sloped edge of the outline (see RoofCustom).
+func _apply_roof_custom(rt: Array) -> void:
+	if rt.is_empty() or str(rt[0]["roof_kind"]) != "gable":
+		return
+	var P: Dictionary = rt[0]
+	var pts: PackedVector2Array = P["pts"]
+	var cfg := RoofCustom.parse(settings.s("model_roof_custom"))
+	if (cfg.get("slopes", []) as Array).size() != pts.size():
+		cfg = {"slopes": RoofCustom.default_slopes(pts, float(P["roof_h"])), "cap": float(cfg.get("cap", 0.0))}
+	var pl := RoofCustom.planes(pts, float(P["wall_h"]), cfg)
+	if pl.is_empty():
+		return
+	P["mode"] = "planes"
+	P["planes"] = pl
+	P["roof_h"] = RoofCustom.rise(pts, pl, float(P["wall_h"]))
+
+
+## A hand-set roof height while a generated / custom roof exists scales that roof instead of being ignored.
+func _rescale_roof(new_h: float) -> bool:
+	if last_rt.is_empty() or new_h <= 0.05:
+		return false
+	var cur := float(last_rt[0]["roof_h"])
+	if cur <= 0.05:
+		return false
+	var f := new_h / cur
+	var typ := settings.s("model_roof_type")
+	if typ == "custom":
+		var cfg := RoofCustom.parse(settings.s("model_roof_custom"))
+		var sl: Array = cfg.get("slopes", [])
+		if sl.is_empty():
+			return false
+		for i in range(sl.size()):
+			if float(sl[i]) >= RoofCustom.MIN_DEG:
+				sl[i] = snappedf(clampf(rad_to_deg(atan(tan(deg_to_rad(float(sl[i]))) * f)), RoofCustom.MIN_DEG, RoofCustom.MAX_DEG), 0.1)
+		cfg["slopes"] = sl
+		if float(cfg.get("cap", 0.0)) > 0.0:
+			cfg["cap"] = float(cfg["cap"]) * f
+		roof_apply_settings({"model_roof_custom": JSON.stringify(cfg), "model_roof_from_tex": false})
+		return true
+	var list: Array = RoofGen.list_from_json(settings.s("model_roof_gen"))
+	for e in list:
+		if int(e.get("part", 0)) == 0:
+			for v in e["prof"]:
+				(v as Array)[1] = float((v as Array)[1]) * f
+			roof_apply_settings({"model_roof_gen": RoofGen.to_json(list), "model_roof_from_tex": false})
+			return true
+	return false
 
 
 ## True when the left end of the gable picture is model side A (t > 0).
@@ -2087,6 +2160,10 @@ func _gable_key() -> String:
 	var key := _forced_region("tex_gable_a")
 	if key == "":
 		key = atlas.pick_key("facade_gable", settings.i("tex_variant"))
+	if key == "":
+		for k in ["S3", "S4"]:       # a canvas laid out from sectors: the gables are S3 / S4 whatever the role guess was
+			if atlas.regions.has(k):
+				return k
 	return key
 
 

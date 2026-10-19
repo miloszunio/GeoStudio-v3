@@ -546,6 +546,7 @@ func _run() -> void:
 	main.faces.clear()
 	await _chimney_checks(main)
 	await _roofgen_checks(main)
+	await _roof_type_checks(main)
 	await _export_checks(main)
 
 	var narrow: Array = [[0.0, 0.0], [8.0, 0.0], [8.0, 1.5], [0.0, 1.5], [0.0, 0.0]]
@@ -638,9 +639,9 @@ func _run() -> void:
 	panel.set_tab_state("tex", "")
 	# "changed from default" marker
 	main.settings.reset_key("model_wall_height")
-	ok(not panel._ctl["model_wall_height"]["reset"].visible, "no reset marker at the default value")
+	ok(panel._ctl["model_wall_height"]["reset"].modulate.a < 0.5 and panel._ctl["model_wall_height"]["reset"].visible, "reset marker is hidden but keeps its place at the default value")
 	main.settings.set_value("model_wall_height", 12.3)
-	ok(panel._ctl["model_wall_height"]["reset"].visible, "reset marker appears for a changed value")
+	ok(panel._ctl["model_wall_height"]["reset"].modulate.a > 0.5, "reset marker appears for a changed value")
 	panel._ctl["model_wall_height"]["reset"].pressed.emit()
 	ok(is_equal_approx(main.settings.f("model_wall_height"), main.settings.defs["model_wall_height"]["default"]), "marker restores the default")
 	panel.select_tab("place", true)
@@ -875,6 +876,59 @@ func _parse_t3d(path: String) -> Dictionary:
 			i += nv
 		i += 1
 	return out
+
+
+func _roof_type_checks(main: Control) -> void:
+	print("== roof types")
+	main.settings.set_value("model_roof_height", 3.0)
+	main.settings.set_value("model_roof_type", "hip")
+	await process_frame
+	var P: Dictionary = main.last_rt[0]
+	ok(str(P["mode"]) == "planes" and (P["planes"] as Array).size() == 4, "hip (kopertowy) roof has four planes (%d)" % (P["planes"] as Array).size())
+	ok(absf(float(P["roof_h"]) - 3.0) < 0.05, "hip roof keeps the set height (%.2f)" % float(P["roof_h"]))
+	main.settings.set_value("model_roof_height", 4.5)
+	await process_frame
+	ok(absf(float(main.last_rt[0]["roof_h"]) - 4.5) < 0.05, "hip roof follows the height field")
+	# custom: only the two long edges slope -> a gable roof; all four -> hip
+	main.settings.set_value("model_roof_type", "custom")
+	await process_frame
+	P = main.last_rt[0]
+	var n_edges := (P["pts"] as PackedVector2Array).size()
+	ok(str(P["mode"]) == "planes" and (P["planes"] as Array).size() == n_edges, "custom roof starts as a plane per edge (%d)" % (P["planes"] as Array).size())
+	var sl: Array = []
+	for i in range(n_edges):
+		sl.append(-1.0)
+	var pts: PackedVector2Array = P["pts"]
+	var long_edges: Array = []
+	for i in range(n_edges):
+		var e := pts[(i + 1) % n_edges] - pts[i]
+		long_edges.append([e.length(), i])
+	long_edges.sort_custom(func(a, b): return a[0] > b[0])
+	sl[long_edges[0][1]] = 30.0
+	sl[long_edges[1][1]] = 30.0
+	main.settings.set_value("model_roof_custom", JSON.stringify({"slopes": sl, "cap": 0.0}))
+	await process_frame
+	ok((main.last_rt[0]["planes"] as Array).size() == 2, "custom roof with two sloped edges = gable (2 planes)")
+	main.settings.set_value("model_roof_height", 2.0)
+	await process_frame
+	var r2 := float(main.last_rt[0]["roof_h"])
+	ok(absf(r2 - 2.0) < 0.15, "custom roof is rescaled by the height field (%.2f)" % r2)
+	var cfg := RoofCustom.planes(pts, 3.0, {"slopes": [45.0, 45.0, 45.0, 45.0], "cap": 1.0})
+	ok(cfg.size() == 5 and RoofGen.height_at(cfg, 0.0, 0.0) <= 4.0 + 1e-6, "a cap plane flattens the top")
+	main.settings.set_value("model_roof_type", "gable")
+	await process_frame
+	ok(str(main.last_rt[0]["mode"]) != "planes", "back to a plain gable roof")
+	var base := ProjectSettings.globalize_path("user://zip_test")
+	_rm_rf(base)
+	DirAccess.make_dir_recursive_absolute(base + "/d/sub")
+	var f := FileAccess.open(base + "/d/sub/a.txt", FileAccess.WRITE)
+	f.store_string("x")
+	f.close()
+	ok(ExportFlow.zip_files(base + "/d", ExportFlow.list_files(base + "/d"), base + "/d.zip"), "zip of a folder is written")
+	var zr := ZIPReader.new()
+	ok(zr.open(base + "/d.zip") == OK and zr.file_exists("sub/a.txt"), "zip keeps relative paths")
+	zr.close()
+	_rm_rf(base)
 
 
 func _meta_roof_checks() -> void:
