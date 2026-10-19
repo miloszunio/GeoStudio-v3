@@ -75,3 +75,5 @@ Geodata © GUGiK / Geoportal.gov.pl – check the service terms before publishin
 make sure you may redistribute them before publishing the repository.
 
 The code is licensed under the **MIT** licence – see [LICENSE](LICENSE). © 2026 Miłosz "pol102" Mindak. Supported by Claude AI.
+
+„Porzućcie wszelką nadzieję, wy, którzy tu wchodzicie”
