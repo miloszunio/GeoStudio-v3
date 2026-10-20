@@ -1,8 +1,9 @@
-# Język opisu modeli (warstwa metadanych) — wersja robocza 1 / Model description language (metadata layer) — draft 1
+# Język opisu modeli (warstwa metadanych) — wersja robocza 2 / Model description language (metadata layer) — draft 2
 
 PL poniżej, krótkie EN na końcu. / Polish below, a short English summary at the end.
 
-**Status: szkic do przeglądu przez zespół.** Dokument opisuje *kontrakt* między eksporterem
+**Status: szkic do przeglądu przez zespół. Wersja 2 to PROPOZYCJA kontraktu – kod jeszcze jej nie zapisuje (eksporter pisze `meta_version` 1).**
+Kierunek: celujemy przede wszystkim w **MaSzyna Reloaded** i **dużo opisujemy w metadanych**, a nie w geometrii: łatwiej zignorować dane niż ciąć modele i dublować podmodele. Dokument opisuje *kontrakt* między eksporterem
 (Photo-to-3D Studio) a konsumentami (Blender, Godot world-assets / Reloaded, dalsze potoki do E3D/T3D).
 E3D/T3D to warstwa implementacji; tu opisujemy warstwę **znaczenia**.
 
@@ -15,7 +16,8 @@ E3D/T3D to warstwa implementacji; tu opisujemy warstwę **znaczenia**.
 3. Metadane to glTF `extras` węzła, klucz `meta`. Ten sam opis trafia do pliku `<model>.meta.json`
    obok `.glb` (dla narzędzi, które nie czytają `extras`).
 4. Nieznane klucze konsument ignoruje; brak klucza = wartość domyślna. Zmiany łamiące podnoszą `meta_version`.
-5. Jednostki: metry, oś Y w górę (glTF). Współrzędne świata: EPSG:2180.
+5. **Opis zamiast geometrii.** Elementy funkcjonalne (świecące okna, wejścia) są *danymi* na powierzchni, nie osobną siatką. Eksporter ich nie wycina z modelu ani nie dubluje podmodeli; konsument sam decyduje, jak je pokazać (shader, maska emisji, ukryty quad) albo je pominąć.
+6. Jednostki: metry, oś Y w górę (glTF). Współrzędne świata: EPSG:2180.
 
 ## Węzeł główny `Building` — `extras.meta`
 
@@ -65,6 +67,49 @@ Wektory są ortonormalne. Uwaga: liczyć w podwójnej precyzji (EPSG:2180 ma war
 Części świecące są wydzielone do osobnego węzła (`..._lit`), więc konsument nie musi filtrować trójkątów.
 Oznaczana jest cała ściana/połać (pole „Świeci” w panelu powierzchni); światło tylko w oknach wymaga osobnej geometrii okien (nie zrobione; opis otworów z GPT usunięto).
 
+## Wersja 2 – propozycja (do akceptacji)
+
+Nowe elementy węzła głównego (`meta_version: 2`). Stare klucze zostają; konsument v2 czyta też v1 (brak nowych kluczy = brak tych funkcji).
+
+### Powierzchnie – `surfaces[]`
+
+Każda ściana, połać i ściana szczytowa ma **stabilny identyfikator** liczony z roli i strony, a nie z kolejności generowania (przebudowa dachu nie może zmieniać id ścian).
+
+| klucz | typ | opis |
+|---|---|---|
+| `id` | string | np. `p0_wall_S`, `p0_roof_A`, `p0_gable_W` (część, rola, strona) |
+| `part` | int | indeks bryły |
+| `role` | string | `wall` / `roof` / `gable` |
+| `facing` | string | `N` / `E` / `S` / `W` / `up` – strona świata, w którą patrzy powierzchnia |
+| `size` | [szerokość, wysokość] | wymiary w metrach, w układzie powierzchni (poniżej) |
+| `sector` | string | kod sektora tekstury (`S1`…`S8`), jeśli jest |
+
+**Układ powierzchni:** `u` biegnie w prawo, patrząc na powierzchnię z zewnątrz; `v` w górę od dolnej krawędzi (u ściany: od cokołu/ziemi, u połaci: od okapu). Metry.
+
+### Emitery – `emitters[]`
+
+Fragment powierzchni, który **może** świecić. To wyłącznie opis; nic nie jest wycinane w siatce.
+
+| klucz | typ | opis |
+|---|---|---|
+| `id` | string | unikalny w modelu |
+| `surface` | string | `id` powierzchni, na której leży |
+| `rect` | [u, v, szerokość, wysokość] | prostokąt w układzie powierzchni, metry |
+| `kind` | string | `window` / `lamp` / `sign` / `door_glass` |
+| `group` | string | grupa włączania (np. `floor1`, `all`); konsument zapala grupy razem |
+| `colour` | string | `#rrggbb`, kolor po zapaleniu (domyślnie ciepła biel) |
+| `strength` | float | jasność względna, domyślnie 1.0 |
+| `mask` | string | (opcjonalnie) plik maski emisji w skali tekstury, jeśli prostokąt nie wystarcza |
+
+Maska w panelu (wycinanka okna) służy **tylko do wyznaczenia `rect`** (i opcjonalnie pliku `mask`). `emissive_light` z wersji 1 zostaje jako przestarzałe i oznacza „cała powierzchnia świeci”.
+Eksport T3D **nie** tworzy podmodeli `light_on` z emiterów (zostaje neutralne `light_on00`).
+
+### Dalsze warstwy (do omówienia)
+
+- **Elementy funkcjonalne:** punkty zaczepienia (komin z dymem – jest; wejście, antena) jako pozycja + kierunek.
+- **Dla symulatora:** obrys do kolizji/podłoża, tagi scenerii (epoka, region, styl).
+- **Pochodzenie:** źródła danych, wersja programu, licencja tekstur, skala.
+
 ## Czego format nie niesie
 
 - LOD-ów (są dopiero w eksporcie T3D, patrz [FORMATS.md](FORMATS.md)), speculara (core glTF go nie ma).
@@ -73,7 +118,8 @@ Oznaczana jest cała ściana/połać (pole „Świeci” w panelu powierzchni); 
 ## Pytania do zespołu
 
 - Czy `roof_shape` w nazwach OSM wystarcza, czy potrzebujecie własnego słownika?
-- Czy `emissive_light` ma być bool, czy poziom (`emissive_strength`) / kolor?
+- ~~Czy `emissive_light` ma być bool, czy poziom/kolor?~~ W wersji 2: `emitters[]` z `strength` i `colour`.
+- Czego dokładnie oczekuje importer **MaSzyna Reloaded** (nazwy, `extras`, sposób zapalania)? Do uzgodnienia z ich dokumentacją.
 - Czy potrzebne dodatkowe typy `model_type` (kapliczka, wiata, ogrodzenie)?
 
 ### Dach per część – `part_roofs` (opcjonalne)
@@ -114,3 +160,9 @@ The meta layer is the **meaning** of the model; the mesh is only visualisation. 
 - `chimneys[]`: `id`, `part`, `centre` [x, z], `size` [width X, length Z], `height_above_roof`, `base_y`, `top_y`, `cap`.
 - Not carried: LODs (only in the T3D export), specular, UV edit details (those are in the project file).
 - Removed in v3: `surfaces`, `openings`, `described_building` (the ChatGPT JSON description no longer exists).
+
+### Version 2 – proposal (for approval)
+Focus: **MaSzyna Reloaded**, **describe rather than cut**: functional elements are data on a surface, not separate geometry; the consumer decides how to show them (shader, emission mask, hidden quad) or ignores them. Not yet written by the exporter (it still writes `meta_version` 1).
+- `surfaces[]`: `id` (stable, from part + role + side, e.g. `p0_wall_S`), `part`, `role` (`wall`/`roof`/`gable`), `facing` (`N`/`E`/`S`/`W`/`up`), `size` [w, h] m, `sector` (`S1`…`S8`). Surface frame: `u` to the right seen from outside, `v` up from the bottom edge (plinth/eaves).
+- `emitters[]`: `id`, `surface`, `rect` [u, v, w, h] m, `kind` (`window`/`lamp`/`sign`/`door_glass`), `group` (switched together), `colour`, `strength`, optional `mask` file. The panel cut-out only defines `rect`/`mask`. `emissive_light` (v1) stays, deprecated = whole surface glows. T3D export does not create `light_on` submodels from emitters.
+- Open: what the Reloaded importer expects (names, `extras`, how lights are switched).
