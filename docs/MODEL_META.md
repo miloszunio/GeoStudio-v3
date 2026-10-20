@@ -131,6 +131,25 @@ Zasada: **model deklaruje, co można sterować i jak jest ukształtowane; to, co
 - `set(channel, value, ramp?)`, `on(channel)`, `off(channel)`, `toggle(channel)` – stan (światło, dym),
 - `emit(emitter_id, params)` – zdarzenie, np. dla `audio`: `{clip, gain, pitch, loop}`. Klip wybiera ten, kto wywołuje, więc model nie niesie żadnego dźwięku.
 
+### Źródła światła i latarnie (propozycja)
+
+Emiter `light` dostaje pole `shape`: `surface` (prostokąt na powierzchni, jak okna – domyślne) albo `point` / `spot` (prawdziwe źródło światła: `position`, `direction`, `cone_deg`, `range_m`, `colour`, `strength`). Latarnia ma zwykle oba na jednym kanale (np. `lamp`): świecący klosz (`surface`) i światło na ulicę (`spot`).
+Nowy typ `model_type: street_lamp` (rekwizyt): składany z parametrów (wysokość słupa, wysięgnik, oprawa), nie z obrysu EGiB. Pozycje wielu sztuk w świecie należą do scenerii, nie do modelu.
+
+### Autorstwo i licencja – `credits` (propozycja)
+
+| klucz | typ | opis |
+|---|---|---|
+| `author` | string | autor modelu (np. `Miłosz "pol102" Mindak`), ustawiany w programie |
+| `created` | string | data utworzenia projektu, ISO 8601 UTC (`2026-10-21T01:58:00Z`); **nie zmienia się** przy kolejnych eksportach |
+| `modified` | string | data ostatniej zmiany projektu, ISO 8601 UTC; aktualizowana przy zapisie/eksporcie |
+| `licence` | string | licencja **modelu** jako identyfikator SPDX (np. `CC-BY-4.0`, `CC0-1.0`, `MIT`); pusty = „wszelkie prawa zastrzeżone” |
+| `licence_url` | string | (opcjonalnie) link do pełnego tekstu |
+| `sources` | object[] | źródła danych: `{name, url, licence, note}` – np. Geoportal.gov.pl (obrys, ortofoto), własne zdjęcia, tekstury zewnętrzne |
+| `generator` | string | program i wersja (już jest w węźle głównym; tu dla spójności) |
+
+Daty i autor są zapisywane także w pliku projektu `.mgdot` (`project.json`), a program ma ustawienie „Autor” i „Domyślna licencja”. Licencja modelu nie zmienia licencji danych źródłowych (zdjęć, ortofotomapy): wpisywane są osobno w `sources`.
+
 ### Dalsze warstwy (do omówienia)
 
 - **Elementy funkcjonalne:** punkty zaczepienia (komin z dymem – jest; wejście, antena) jako pozycja + kierunek.
@@ -194,3 +213,5 @@ Focus: **MaSzyna Reloaded**, **describe rather than cut**: functional elements a
 - `emitters[]`: `id`, `surface`, `rect` [u, v, w, h] m, `kind` (`window`/`lamp`/`sign`/`door_glass`), `group` (switched together), `colour`, `strength`, optional `mask` file. The panel cut-out only defines `rect`/`mask`. `emissive_light` (v1) stays, deprecated = whole surface glows. T3D export does not create `light_on` submodels from emitters.
 - `channels[]` (`id`, `type` `switch`/`level`, `default`, `ramp_up`/`ramp_down`) and `emitters[]` (`kind` `light`/`audio`/`smoke`, optional `channel`; `group` is replaced by `channel`). Audio emitters carry only the source shape: `position`, `pattern` (`omni`/`directional`), `direction` + `cone_deg`, `range_m`; **no clip**. The model declares what can be driven; the caller decides what happens: `set/on/off/toggle(channel, value, ramp)` for state, `emit(emitter_id, {clip, gain, pitch, loop})` for events.
 - Open: what the Reloaded importer expects (names, `extras`, how lights are switched).
+- Light emitters get `shape`: `surface` (default) or `point`/`spot` (`position`, `direction`, `cone_deg`, `range_m`, `colour`, `strength`). New `model_type: street_lamp` (parametric prop); placing many lamps belongs to the scenery.
+- `credits`: `author`, `created` and `modified` (ISO 8601 UTC; `created` never changes), `licence` (SPDX id of the **model**; empty = all rights reserved), `licence_url`, `sources[]` (`name`, `url`, `licence`, `note`), `generator`. Also stored in the `.mgdot` project; the app gets "Author" and "Default licence" settings. The model licence does not change the licence of source data (photos, orthophoto) – list them in `sources`.

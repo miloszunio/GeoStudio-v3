@@ -14,6 +14,7 @@
 
 | PL | EN |
 |---|---|
+| **Autorstwo i licencja w metadanych** (`credits`: autor, daty utworzenia/edycji, licencja SPDX, źródła) oraz ustawienia „Autor” i „Domyślna licencja”. | **Authorship and licence in metadata** (`credits`: author, created/modified dates, SPDX licence, sources) plus "Author" and "Default licence" settings. |
 | **Weryfikacja T3D w MaSzynie / MaSzyna Reloaded**: oś V tekstury, nazwy źródeł dymu przy wielu kominach, `light_on00`, mapy neutralne. Poprawki eksportera wg wyniku. | **T3D verification in MaSzyna / MaSzyna Reloaded**: texture V axis, smoke-source names with several chimneys, `light_on00`, neutral maps. Exporter fixes based on the result. |
 | Test na **Windows** (ścieżki, eksport, `.mgdot`) i **żywych usług** Geoportalu i Nominatim. | Testing on **Windows** (paths, export, `.mgdot`) and the **live** Geoportal and Nominatim services. |
 | **Dach własny** dla obrysów z wklęsłymi narożnikami (np. kształt L) – dziś pomijane krawędzie. | **Custom roof** for outlines with reflex corners (e.g. L-shaped) – such edges are skipped today. |
@@ -23,6 +24,7 @@
 
 | PL | EN |
 |---|---|
+| **Latarnie uliczne**: `model_type: street_lamp`, generator parametryczny, źródła światła `point`/`spot`. | **Street lamps**: `model_type: street_lamp`, parametric generator, `point`/`spot` light sources. |
 | **Okna i drzwi** jako osobna geometria (dziś tylko tekstura). | **Windows and doors** as separate geometry (texture only today). |
 | **Kominy**: skośne połączenia z dachem, brak szwów powtarzanego fragmentu ściany. | **Chimneys**: slanted joints to the roof, no seams on the repeated wall fragment. |
 | Więcej **LOD** i opcje optymalizacji siatki dla symulatora. | More **LODs** and mesh optimisation options for the simulator. |
