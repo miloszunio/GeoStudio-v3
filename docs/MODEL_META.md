@@ -104,6 +104,33 @@ Fragment powierzchni, który **może** świecić. To wyłącznie opis; nic nie j
 Maska w panelu (wycinanka okna) służy **tylko do wyznaczenia `rect`** (i opcjonalnie pliku `mask`). `emissive_light` z wersji 1 zostaje jako przestarzałe i oznacza „cała powierzchnia świeci”.
 Eksport T3D **nie** tworzy podmodeli `light_on` z emiterów (zostaje neutralne `light_on00`).
 
+### Kanały i emitery sterowane z zewnątrz (rozszerzenie v2)
+
+Zasada: **model deklaruje, co można sterować i jak jest ukształtowane; to, co się dzieje, ustala wywołujący** (silnik, symulator, scenariusz). Model nie zawiera skryptów ani próbek dźwięku.
+
+**`channels[]`** – nazwane wejścia stanu obiektu:
+
+| klucz | typ | opis |
+|---|---|---|
+| `id` | string | np. `floor1_lights` |
+| `type` | string | `switch` (0/1) / `level` (0…1) |
+| `default` | number | stan początkowy |
+| `ramp_up`, `ramp_down` | float | domyślny czas narastania/opadania [s] |
+
+**`emitters[]`** (zastępuje wąski opis z poprzedniej sekcji; `group` zastąpione przez `channel`). Wspólne: `id`, `kind` (`light` / `audio` / `smoke`), `channel` (opcjonalnie – kanał, który nim steruje; jeden kanał może sterować wieloma emiterami).
+
+- `kind: light` – jak wyżej: `surface`, `rect`, `colour`, `strength`, `mask`, plus `channel`.
+- `kind: audio` – tylko kształt źródła, **bez klipu**:
+  - `position` [x, y, z] – metry, układ modelu,
+  - `pattern` – `omni` (dookólne) / `directional` (kierunkowe),
+  - `direction` [x, y, z] i `cone_deg` – tylko dla `directional`,
+  - `range_m` – zasięg domyślny (opcjonalnie).
+- `kind: smoke` – komin (`chimney_id`), intensywność z kanału.
+
+**Wywołania (nie są częścią modelu, to słownik dla konsumentów):**
+- `set(channel, value, ramp?)`, `on(channel)`, `off(channel)`, `toggle(channel)` – stan (światło, dym),
+- `emit(emitter_id, params)` – zdarzenie, np. dla `audio`: `{clip, gain, pitch, loop}`. Klip wybiera ten, kto wywołuje, więc model nie niesie żadnego dźwięku.
+
 ### Dalsze warstwy (do omówienia)
 
 - **Elementy funkcjonalne:** punkty zaczepienia (komin z dymem – jest; wejście, antena) jako pozycja + kierunek.
@@ -165,4 +192,5 @@ The meta layer is the **meaning** of the model; the mesh is only visualisation. 
 Focus: **MaSzyna Reloaded**, **describe rather than cut**: functional elements are data on a surface, not separate geometry; the consumer decides how to show them (shader, emission mask, hidden quad) or ignores them. Not yet written by the exporter (it still writes `meta_version` 1).
 - `surfaces[]`: `id` (stable, from part + role + side, e.g. `p0_wall_S`), `part`, `role` (`wall`/`roof`/`gable`), `facing` (`N`/`E`/`S`/`W`/`up`), `size` [w, h] m, `sector` (`S1`…`S8`). Surface frame: `u` to the right seen from outside, `v` up from the bottom edge (plinth/eaves).
 - `emitters[]`: `id`, `surface`, `rect` [u, v, w, h] m, `kind` (`window`/`lamp`/`sign`/`door_glass`), `group` (switched together), `colour`, `strength`, optional `mask` file. The panel cut-out only defines `rect`/`mask`. `emissive_light` (v1) stays, deprecated = whole surface glows. T3D export does not create `light_on` submodels from emitters.
+- `channels[]` (`id`, `type` `switch`/`level`, `default`, `ramp_up`/`ramp_down`) and `emitters[]` (`kind` `light`/`audio`/`smoke`, optional `channel`; `group` is replaced by `channel`). Audio emitters carry only the source shape: `position`, `pattern` (`omni`/`directional`), `direction` + `cone_deg`, `range_m`; **no clip**. The model declares what can be driven; the caller decides what happens: `set/on/off/toggle(channel, value, ramp)` for state, `emit(emitter_id, {clip, gain, pitch, loop})` for events.
 - Open: what the Reloaded importer expects (names, `extras`, how lights are switched).
