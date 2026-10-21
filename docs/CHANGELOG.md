@@ -1,5 +1,19 @@
 # Historia zmian / Changelog
 
+## 3.0.2 (2026-10-21)
+
+**PL**
+- Okno „Projekt” na starcie ma przycisk **Zamknij program** (wcześniej programu nie dało się zamknąć bez wskazania folderu), a okno zapisu `.mgdot` nie blokuje już zamykania okna programu.
+- Karta **Opcje** nazywa się teraz **Projekt** (sekcja „Zapis i pliki projektu”); pasek kart zawija się do drugiego rzędu.
+- Nowa karta **Emitery** (przed kartą Projekt): dodawanie emiterów światła (powierzchnia, punkt, reflektor), dźwięku (dookólny, kierunkowy) i dymu, kanały sterowania, znaczniki w 3D, zapis w projekcie i w metadanych (`emitters`, `channels`; szkic v2).
+- Testy: 342 sprawdzenia; nowe `tools/quit_dialog_test.gd`, `tools/emitters_shot.gd`.
+
+**EN**
+- The start-up "Projekt" window has a **Zamknij program** (close program) button (before, the program could not be closed without choosing a folder), and the `.mgdot` save dialog no longer blocks closing the main window.
+- The **Opcje** tab is now **Projekt** (section "Zapis i pliki projektu"); the tab strip wraps to a second row.
+- New **Emitery** tab (before Projekt): add light (surface, point, spot), audio (omni, directional) and smoke emitters, control channels, 3D markers, saved in the project and in the metadata (`emitters`, `channels`; draft v2).
+- Tests: 342 checks; new `tools/quit_dialog_test.gd`, `tools/emitters_shot.gd`.
+
 ## Docs-only (2026-10-20)
 
 **PL** – dodano licencję MIT (`LICENSE`), zapis o przeznaczeniu dla MaSzyny / MaSzyna Reloaded oraz listę prac w toku (metadane, wycinanki pod elementy udające świecenie).

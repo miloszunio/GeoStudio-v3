@@ -2,7 +2,7 @@
 
 *Wersja polska: [PODRECZNIK.pl.md](PODRECZNIK.pl.md)*
 
-Program version: **3.0.1** (Godot 4.6). This manual covers the whole path "building from the map → 3D model → texture from ChatGPT →
+Program version: **3.0.2** (Godot 4.6). This manual covers the whole path "building from the map → 3D model → texture from ChatGPT →
 roof → chimneys → export (GLB / glTF / T3D) → `.mgdot` project file" and what to check while testing.
 **Note:** the program interface is in Polish; button and section names are quoted in Polish with a translation in brackets where it helps.
 
@@ -56,8 +56,8 @@ You work in a **project folder** (saved automatically); the **`.mgdot` file** is
 
 ### Saving and opening `.mgdot`
 
-- **Opcje → Projekt → Zapisz projekt (.mgdot)** asks for a name the first time and then saves to the same place. **Zapisz projekt jako…** (save as) always asks.
-- **Opcje → Projekt → Otwórz projekt / zmień folder…** or the start window – pick a `.mgdot` file or choose it from the recent list.
+- **Projekt → Zapis i pliki projektu → Zapisz projekt (.mgdot)** asks for a name the first time and then saves to the same place. **Zapisz projekt jako…** (save as) always asks.
+- **Projekt → Zapis i pliki projektu → Otwórz projekt / zmień folder…** or the start window – pick a `.mgdot` file or choose it from the recent list.
   The program unpacks it into `<name>_projekt` next to the file and opens it. If that folder was unpacked from exactly this save it is reused
   (no second unpacking); if the file is newer, `<name>_projekt_2` etc. is created – nothing is ever overwritten.
 - Writing is **atomic**: the file is written as `.tmp` and replaces the old one only when complete, so a crash cannot destroy the previous version.
@@ -66,7 +66,7 @@ You work in a **project folder** (saved automatically); the **`.mgdot` file** is
 
 ## 4. Screen layout and controls
 
-The left **side panel** has the tabs **1 Miejsce (place) → 2 Budynek (building) → 3 Tekstury (textures) → 4 Dach (roof) → 5 Widok (view)** and **⚙ Opcje (options)**.
+The left **side panel** has the tabs **1 Miejsce (place) → 2 Budynek (building) → 3 Tekstury (textures) → 4 Dach (roof) → 5 Widok (view)** and the two side tabs **⚙ Emitery (emitters)** and **⚙ Projekt (project: save, open, program settings)**.
 A finished step shows ✓. Building, Textures and Roof stay locked until a model is built. The **Szukaj ustawienia…** field searches all tabs.
 A changed setting shows an orange **↺** (click = restore the default). Rare settings live in the **⚙ Zaawansowane…** (advanced) window (Save / Cancel).
 
@@ -91,7 +91,7 @@ Buttons at the lower right of the 3D view: Góra/Przód/Tył/Lewo/Prawo (top/fro
 3. **Zbuduj model 3D z zaznaczenia →** (build the model). The largest polygon is the main body, the rest are annexes.
 4. Alternative: the **Obrys z pliku GeoJSON** section – import your own outline or **Załaduj przykładowy budynek (L)** (sample L-shaped building).
 
-Orthophoto and outlines are cached locally; requests go through a queue with retries on 429/503 (Opcje → Geoportal).
+Orthophoto and outlines are cached locally; requests go through a queue with retries on 429/503 (Projekt → Połączenie z Geoportalem).
 
 ## 6. Step 2 – Building
 
@@ -220,6 +220,9 @@ night-light submodel. Metadata description: [MODEL_META.md](MODEL_META.md).
 
 Further: **Co pokazać** (show: walls, roof, ground, helper grid), **Światło i tło** (light and background), **Kamera**, **Podłoże i siatka** (ground and grid).
 
+### Emitters tab (draft)
+The **Emitery** tab adds places on the model that can give off light, sound or smoke: **light – surface** (window, sign), **light – point**, **light – spot** (lamp), **audio – omni**, **audio – directional**, **smoke – chimney**. They are *data only* (nothing is cut out of the mesh): small markers show them in the 3D view and they are saved in the project (`.mgdot`) and in the export metadata (`emitters`, `channels`). A **channel** is a named input that switches a group of emitters (e.g. `swiatla` lights all windows); channels are created automatically from the names you type. Draft contract: [MODEL_META.md](MODEL_META.md). A surface light is placed by wall number, distance from the wall start, height and size; the provisional surface id `p<part>:w<wall>` will be reworked when `surfaces[]` is implemented. Not verified in MaSzyna Reloaded.
+
 ## 11. Options
 
 **Projekt** (save/open `.mgdot`, render, project folder), **Program** (font size, full screen, reset settings), **Połączenie z Geoportalem** (service URLs, **Testuj usługi** = test services), **Cache** (validity, size, parallelism).
@@ -244,7 +247,7 @@ Further: **Co pokazać** (show: walls, roof, ground, helper grid), **Światło i
 - **To be worked on next:** (1) the whole **metadata section** (`model_meta`, per-part data, [MODEL_META.md](MODEL_META.md)); (2) the **panel cut-outs** for elements that imitate lighting (lit windows, lamps, `light_on` surfaces) – cutting, marking and the T3D export (now a neutral `light_on00` without a mask).
 - **The T3D export was not checked in the MaSzyna simulator itself.** The format was rebuilt from the sample pack (cottages, street lamps) and checked automatically (vertex order,
   normals, tangents, file layout). To be confirmed in the simulator: the direction of the texture V axis, smoke-source names with several chimneys, `light_on00` without a window mask, the `normalmap_specgloss` shader with neutral maps.
-- The connection to the **live** Geoportal and Nominatim was developed against a mock server; if the map is empty: Opcje → Testuj usługi.
+- The connection to the **live** Geoportal and Nominatim was developed against a mock server; if the map is empty: Projekt → Połączenie z Geoportalem → Testuj usługi.
 - EGiB gives a footprint and sometimes the number of floors; the roof is a simplified model (a generator profile), not LoD2.
 - **ChatGPT does not guarantee** the number of windows, the image size or proportions. The program cuts and scales what it gets; a wall picture is stretched over the whole wall.
 - Windows and doors are not separate geometry (the JSON opening description was removed); the glow (`emissive`, `light_on00`) applies to a whole surface.
@@ -256,7 +259,7 @@ Further: **Co pokazać** (show: walls, roof, ground, helper grid), **Światło i
 
 ```
 godot --headless --path . --import
-godot --headless --path . --script res://tools/selftest.gd      # 326 checks, exit code 0 = OK
+godot --headless --path . --script res://tools/selftest.gd      # 342 checks, exit code 0 = OK
 ```
 They cover: projection, settings, frame and sector detection, sheet layout, prompt generator, roof profile, chimneys, GLB/glTF export, **T3D export**
 (vertex order, normals, LODs, TGA), the **`.mgdot` format** (packing, unpacking, `../` protection, format versions), the edge overlay. Geoportal mock: `tools/mock_geoportal.py` + `tools/e2e_mock.gd`.

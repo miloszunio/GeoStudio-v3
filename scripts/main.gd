@@ -20,6 +20,7 @@ var parts_ui: PartsUi
 var projflow: ProjectFlow
 var roofed: RoofFlow
 var chimneys: ChimneyFlow
+var emitters: EmitterFlow
 var atlasflow: AtlasFlow
 
 var settings: AppSettings
@@ -150,6 +151,7 @@ func _ready() -> void:
 	projflow = ProjectFlow.new(self)
 	roofed = RoofFlow.new(self)
 	chimneys = ChimneyFlow.new(self)
+	emitters = EmitterFlow.new(self)
 	atlasflow = AtlasFlow.new(self)
 	_apply_ui_theme()
 	_build_ui()
@@ -321,7 +323,7 @@ func _build_ui() -> void:
 	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	sv.add_child(panel)
-	panel.setup(settings, {"place": _build_place_page(), "building": _build_building_page(), "app": _build_app_page()})
+	panel.setup(settings, {"place": _build_place_page(), "building": _build_building_page(), "app": _build_app_page(), "emit": _build_emitter_page()})
 	panel.action_pressed.connect(_on_action)
 	panel.tab_changed.connect(_on_sidebar_tab)
 	_update_building_label()
@@ -525,6 +527,12 @@ func _build_building_page() -> Control:
 	return box
 
 
+func _build_emitter_page() -> Control:
+	var page := EmitterPage.new()
+	page.setup(self)
+	return page
+
+
 ## Header of the settings tab: result of the Geoportal connection test.
 func _build_app_page() -> Control:
 	diag_label = Label.new()
@@ -656,6 +664,9 @@ func _on_setting_changed(key: String) -> void:
 		map_canvas.queue_redraw()
 	elif key == "model_chimneys":
 		chimneys.rebuild()
+		emitters.rebuild_gizmos()      # smoke markers follow the chimneys
+	elif key == "model_emitters" or key == "model_channels":
+		emitters.rebuild_gizmos()
 	elif key.begins_with("model_"):
 		if key == "model_wall_height" and not _wall_internal and settings.b("model_walls_from_tex"):
 			settings.set_value("model_walls_from_tex", false)   # a hand-set wall height wins over the texture
@@ -2299,6 +2310,7 @@ func _build_parts(parts: Array, reset_view := true) -> bool:
 	_use_part(rt[0])
 	last_rt = rt
 	chimneys.rebuild()
+	emitters.rebuild_gizmos()
 	_apply_visibility()
 	_update_highlight()
 

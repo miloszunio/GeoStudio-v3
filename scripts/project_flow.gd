@@ -43,6 +43,7 @@ func _show_project_dialog(can_cancel: bool, hint := "") -> void:
 		project_dialog = ProjectDialog.new()
 		project_dialog.chosen.connect(_open_project)
 		project_dialog.chosen_file.connect(open_mgdot)
+		project_dialog.quit_requested.connect(_on_quit)
 		app.add_child(project_dialog)
 	project_dialog.show_dialog(app.settings.s("ui_recent_projects"), can_cancel, hint, app.settings.s("ui_recent_mgdot"))
 
@@ -92,6 +93,7 @@ func save_mgdot(save_as := false) -> void:
 		_mgdot_dialog.access = FileDialog.ACCESS_FILESYSTEM
 		_mgdot_dialog.file_mode = FileDialog.FILE_MODE_SAVE_FILE
 		_mgdot_dialog.title = "Zapisz projekt jako .mgdot"
+		_mgdot_dialog.exclusive = false    # an exclusive window would swallow the window's X button and the "Zamknij" button
 		_mgdot_dialog.filters = PackedStringArray(["*.mgdot ; Projekt Photo-to-3D Studio"])
 		_mgdot_dialog.file_selected.connect(func(p: String) -> void:
 			_write_mgdot(p if p.get_extension().to_lower() == MgDot.EXT else p + "." + MgDot.EXT))
@@ -261,6 +263,8 @@ func _save_render() -> String:
 
 
 func _on_quit() -> void:
+	if _mgdot_dialog != null:
+		_mgdot_dialog.hide()
 	if app.project.is_open():
 		_save_render()
 		_save_project()

@@ -55,6 +55,10 @@ func export_info() -> Dictionary:
 	var chim: Array = app.chimneys.export_list()
 	if not chim.is_empty():
 		info["chimneys"] = chim
+	var ems: Array = app.emitters.export_list()
+	if not ems.is_empty():
+		info["emitters"] = ems
+		info["channels"] = app.emitters.channel_export_list()
 	if app._use_textures():
 		info["texture"] = {"file": app.settings.s("tex_source").get_file(), "px_per_m": app.settings.f("tex_px_per_m")}
 		var longs = app.atlas.keys_for_role("facade_long")

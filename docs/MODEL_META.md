@@ -104,6 +104,7 @@ Fragment powierzchni, który **może** świecić. To wyłącznie opis; nic nie j
 **Ręczne wrysowywanie:** powierzchnie świecące można też wrysować „z palca” bezpośrednio w programie (prostokąt na ścianie lub połaci, bez maski ze zdjęcia); wynikiem jest ten sam `rect`. Edytor do tego dorobimy u siebie (patrz [ROADMAP.md](ROADMAP.md)).
 
 Maska w panelu (wycinanka okna) służy **tylko do wyznaczenia `rect`** (i opcjonalnie pliku `mask`). `emissive_light` z wersji 1 zostaje jako przestarzałe i oznacza „cała powierzchnia świeci”.
+**Stan wdrożenia (3.0.2):** program ma kartę **Emitery**; eksport zapisuje `emitters[]` i `channels[]` (surface light z tymczasowym `surface: "p<bryła>:w<ściana>"` i `rect`, bez `surfaces[]` i bez zmiany `meta_version`).
 Eksport T3D **nie** tworzy podmodeli `light_on` z emiterów (zostaje neutralne `light_on00`).
 
 ### Kanały i emitery sterowane z zewnątrz (rozszerzenie v2)

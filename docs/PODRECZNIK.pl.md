@@ -2,7 +2,7 @@
 
 *English version: [MANUAL.en.md](MANUAL.en.md)*
 
-Wersja programu: **3.0.1** (Godot 4.6). Dokument opisuje całą ścieżkę „budynek z mapy → model 3D → tekstura z ChatGPT →
+Wersja programu: **3.0.2** (Godot 4.6). Dokument opisuje całą ścieżkę „budynek z mapy → model 3D → tekstura z ChatGPT →
 dach → kominy → eksport (GLB / glTF / T3D) → plik projektu `.mgdot`” oraz to, co dokładnie sprawdzać podczas testów.
 
 ---
@@ -55,8 +55,8 @@ Praca odbywa się w **folderze projektu** (zapisywany automatycznie), a **plik `
 
 ### Zapis i otwieranie `.mgdot`
 
-- **Opcje → Projekt → Zapisz projekt (.mgdot)** – pierwszy raz pyta o nazwę, potem zapisuje w to samo miejsce. **Zapisz projekt jako…** pyta zawsze.
-- **Opcje → Projekt → Otwórz projekt / zmień folder…** albo okno startowe – wskaż plik `.mgdot` lub wybierz go z listy ostatnich.
+- **Projekt → Zapis i pliki projektu → Zapisz projekt (.mgdot)** – pierwszy raz pyta o nazwę, potem zapisuje w to samo miejsce. **Zapisz projekt jako…** pyta zawsze.
+- **Projekt → Zapis i pliki projektu → Otwórz projekt / zmień folder…** albo okno startowe – wskaż plik `.mgdot` lub wybierz go z listy ostatnich.
   Program rozpakowuje go do folderu `<nazwa>_projekt` obok pliku i otwiera. Jeśli ten folder pochodzi dokładnie z tego zapisu, jest użyty ponownie
   (nic się nie rozpakowuje drugi raz); jeśli plik jest nowszy, powstaje `<nazwa>_projekt_2` itd. – nic nie jest nadpisywane.
 - Zapis jest **atomowy**: plik powstaje jako `.tmp` i dopiero gotowy zastępuje stary, więc awaria w trakcie nie niszczy poprzedniej wersji.
@@ -65,7 +65,7 @@ Praca odbywa się w **folderze projektu** (zapisywany automatycznie), a **plik `
 
 ## 4. Układ ekranu i sterowanie
 
-Lewy **panel boczny** ma karty: **1 Miejsce → 2 Budynek → 3 Tekstury → 4 Dach → 5 Widok** oraz **⚙ Opcje**. Ukończony krok ma ✓.
+Lewy **panel boczny** ma karty: **1 Miejsce → 2 Budynek → 3 Tekstury → 4 Dach → 5 Widok** oraz dwie karty boczne **⚙ Emitery** i **⚙ Projekt** (zapis, otwieranie, ustawienia programu). Ukończony krok ma ✓.
 Karty Budynek, Tekstury i Dach są zablokowane do zbudowania modelu. Pole **Szukaj ustawienia…** przeszukuje wszystkie karty.
 Zmienione ustawienie ma pomarańczowe **↺** (klik = przywróć). Rzadkie ustawienia leżą w oknie **⚙ Zaawansowane…** (Zapisz / Anuluj).
 
@@ -90,7 +90,7 @@ Przyciski w prawym dolnym rogu widoku 3D: Góra / Przód / Tył / Lewo / Prawo (
 3. **Zbuduj model 3D z zaznaczenia →**. Największy wielokąt to bryła główna, reszta to dobudówki.
 4. Alternatywa: sekcja **Obrys z pliku GeoJSON** – import własnego obrysu albo **Załaduj przykładowy budynek (L)**.
 
-Ortofotomapa i obrysy są cache’owane lokalnie; zapytania idą przez kolejkę z ponawianiem przy 429/503 (Opcje → Geoportal).
+Ortofotomapa i obrysy są cache’owane lokalnie; zapytania idą przez kolejkę z ponawianiem przy 429/503 (Projekt → Połączenie z Geoportalem).
 
 ## 6. Krok 2 – Budynek
 
@@ -219,6 +219,9 @@ submodel świateł nocnych. Opis metadanych: [MODEL_META.md](MODEL_META.md).
 
 Dalej: **Co pokazać** (elewacje, dach, podłoże, siatka pomocnicza), **Światło i tło**, **Kamera**, **Podłoże i siatka**.
 
+### Karta Emitery (szkic)
+Karta **Emitery** dodaje miejsca na modelu, które mogą świecić, grać albo dymić: **światło – powierzchnia** (okno, szyld), **światło – punktowe**, **światło – reflektor** (latarnia), **dźwięk – dookólny**, **dźwięk – kierunkowy**, **dym – komin**. To tylko opis (nic nie jest wycinane z siatki): w widoku 3D pokazują je małe znaczniki, a zapisują się w projekcie (`.mgdot`) i w metadanych eksportu (`emitters`, `channels`). **Kanał** to nazwane wejście, które przełącza grupę emiterów (np. `swiatla` zapala wszystkie okna); kanały powstają same z wpisanych nazw. Projekt kontraktu: [MODEL_META.md](MODEL_META.md). Światło-powierzchnię ustawia się numerem ściany, odległością od początku ściany, wysokością i rozmiarem; tymczasowy identyfikator powierzchni `p<bryła>:w<ściana>` zostanie przerobiony przy wdrożeniu `surfaces[]`. Nie sprawdzono w MaSzyna Reloaded.
+
 ## 11. Opcje
 
 **Projekt** (zapis/otwieranie `.mgdot`, render, folder projektu), **Program** (czcionka, pełny ekran, reset ustawień), **Połączenie z Geoportalem** (adresy usług, **Testuj usługi**), **Cache** (ważność, rozmiar, równoległość).
@@ -243,7 +246,7 @@ Dalej: **Co pokazać** (elewacje, dach, podłoże, siatka pomocnicza), **Świat�
 - **Do dopracowania w następnej kolejności:** (1) cała **sekcja metadanych** (`model_meta`, dane per część, [MODEL_META.md](MODEL_META.md)); (2) **wycinanki na panelu** pod kątem elementów udających świecenie (podświetlone okna, lampy, powierzchnie `light_on`) – wycinanie, oznaczanie i eksport T3D (obecnie neutralne `light_on00` bez maski).
 - **Eksport T3D nie był sprawdzony w samym symulatorze MaSzyna.** Format odtworzono z paczki przykładowej (domki, latarnie) i z kontroli automatycznych (kolejność wierzchołków,
   normalne, tangenty, układ plików). Do potwierdzenia w symulatorze: kierunek osi V tekstury, nazwy źródeł dymu przy kilku kominach, działanie `light_on00` bez maski okien, shader `normalmap_specgloss` z neutralnymi mapami.
-- Połączenie z **żywym** Geoportalem i Nominatim było rozwijane na atrapie serwera; jeśli mapa jest pusta: Opcje → Testuj usługi.
+- Połączenie z **żywym** Geoportalem i Nominatim było rozwijane na atrapie serwera; jeśli mapa jest pusta: Projekt → Połączenie z Geoportalem → Testuj usługi.
 - EGiB daje obrys i czasem liczbę kondygnacji; dach to uproszczony model (profil z generatora), nie LoD2.
 - **ChatGPT nie gwarantuje** liczby okien, rozmiaru obrazu ani proporcji. Program wycina i skaluje to, co dostał; obraz ściany jest rozciągany na całą ścianę.
 - Okna i drzwi nie są osobną geometrią (JSON z opisem otworów usunięto); światło (`emissive`, `light_on00`) dotyczy całej powierzchni.
@@ -255,7 +258,7 @@ Dalej: **Co pokazać** (elewacje, dach, podłoże, siatka pomocnicza), **Świat�
 
 ```
 godot --headless --path . --import
-godot --headless --path . --script res://tools/selftest.gd      # 326 sprawdzeń, kod wyjścia 0 = OK
+godot --headless --path . --script res://tools/selftest.gd      # 342 sprawdzeń, kod wyjścia 0 = OK
 ```
 Obejmują m.in.: projekcję, ustawienia, wykrywanie ramek i sektorów, układ arkusza, generator promptu, profil dachu, dachy kopertowy i własny, kominy, eksport GLB/glTF, **eksport T3D**
 (kolejność wierzchołków, normalne, LOD-y, TGA), **format `.mgdot`** (pakowanie, rozpakowanie, ochrona przed `../`, wersje formatu), nakładkę krawędzi. Atrapa Geoportalu: `tools/mock_geoportal.py` + `tools/e2e_mock.gd`.

@@ -39,7 +39,7 @@ func search() -> void:
 	app._set_status("Szukam: %s…" % q)
 	var found: Array = await app.geo.search_places(q)
 	if found.is_empty():
-		fill_list([], "Nic nie znaleziono (albo wyszukiwarka nie odpowiada – sprawdź Opcje → Połączenie).")
+		fill_list([], "Nic nie znaleziono (albo wyszukiwarka nie odpowiada – sprawdź Projekt → Połączenie z Geoportalem).")
 		app._set_status("Brak wyników dla „%s”." % q)
 		return
 	fill_list(found, "Wyniki (%d). Kliknij, aby przejść na mapie." % found.size())

@@ -5,11 +5,14 @@ extends Window
 
 signal chosen(folder: String)
 signal chosen_file(path: String)
+## Emitted when the dialog is closed while no project is open (start-up): there is nothing to go back to, so the program closes.
+signal quit_requested
 
 var _recent: ItemList
 var _info: Label
 var _folder_dialog: FileDialog
 var _can_cancel := false
+var _close_btn: Button
 var _recent_paths: Array = []
 var _files: ItemList
 var _file_dialog: FileDialog
@@ -100,10 +103,10 @@ func _build() -> void:
 	var gap := Control.new()
 	gap.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	bottom.add_child(gap)
-	var cancel := Button.new()
-	cancel.text = "Zamknij"
-	cancel.pressed.connect(_on_close)
-	bottom.add_child(cancel)
+	_close_btn = Button.new()
+	_close_btn.text = "Zamknij"
+	_close_btn.pressed.connect(_on_close)
+	bottom.add_child(_close_btn)
 
 	_folder_dialog = FileDialog.new()
 	_folder_dialog.access = FileDialog.ACCESS_FILESYSTEM
@@ -123,6 +126,8 @@ func _build() -> void:
 ## can_cancel: false at start-up (a project is mandatory), true when switching projects.
 func show_dialog(recent_stored: String, can_cancel: bool, hint := "", recent_files_stored := "") -> void:
 	_can_cancel = can_cancel
+	_close_btn.text = "Zamknij" if can_cancel else "Zamknij program"
+	_close_btn.tooltip_text = "Wróć do poprzedniego widoku" if can_cancel else "Bez folderu projektu nie ma gdzie zapisywać – zamyka program."
 	_recent_paths = ProjectStore.recent_list(recent_stored)
 	_recent.clear()
 	for p in _recent_paths:
@@ -166,4 +171,5 @@ func _on_close() -> void:
 	if _can_cancel:
 		hide()
 	else:
-		_info.text = "Najpierw wskaż folder projektu – bez niego nie ma gdzie zapisać danych."
+		hide()
+		quit_requested.emit()

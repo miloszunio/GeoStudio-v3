@@ -21,7 +21,7 @@ var _tabs: Array = []         # [{"id", "title", "step", "state", "button", "scr
 var _filter := ""
 var _syncing := false
 var _current := ""
-var _strip: HBoxContainer
+var _strip: HFlowContainer
 var _nav_back: Button
 var _nav_next: Button
 var _nav_hint: Label
@@ -38,8 +38,9 @@ func setup(s: AppSettings, custom_pages: Dictionary = {}) -> void:
 	settings = s
 	add_theme_constant_override("separation", 8)
 
-	_strip = HBoxContainer.new()
-	_strip.add_theme_constant_override("separation", 3)
+	_strip = HFlowContainer.new()     # wraps to a second row when the tabs do not fit
+	_strip.add_theme_constant_override("h_separation", 3)
+	_strip.add_theme_constant_override("v_separation", 3)
 	add_child(_strip)
 
 	var search := LineEdit.new()
@@ -59,7 +60,7 @@ func setup(s: AppSettings, custom_pages: Dictionary = {}) -> void:
 		var btn := Button.new()
 		btn.tooltip_text = str(t.get("heading", ""))
 		btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		btn.custom_minimum_size = Vector2(0, 46)
+		btn.custom_minimum_size = Vector2(86, 46)
 		btn.clip_text = true
 		btn.add_theme_font_size_override("font_size", 13)
 		btn.toggle_mode = true

@@ -26,6 +26,8 @@ główna scena tworzy je w `_ready()`. Ustawienia są opisane jednym schematem (
 | `edge_overlay.gd` | `EdgeOverlay` | nakładka krawędzi i wierzchołków („Edged Faces”): geometria w przestrzeni ekranu, dwa przebiegi (widoczne / zasłonięte) |
 | `export_flow.gd`, `model_exporter.gd`, `model_meta.gd` | | eksport GLB / glTF i metadane |
 | `t3d_exporter.gd` | `T3dExporter` | eksport T3D dla MaSzyny: submodele, LOD-y, TGA, `.mat`, `.inc`, nodebank |
+| `emitter_flow.gd` | `EmitterFlow` | emitery (światło, dźwięk, dym) i kanały: dane w ustawieniach, znaczniki 3D, eksport metadanych (szkic v2) |
+| `emitter_page.gd` | `EmitterPage` | karta „Emitery”: dodawanie i edycja emiterów i kanałów |
 | `mgdot.gd` | `MgDot` | format `.mgdot`: pakowanie (atomowe), rozpakowanie, manifest, kontrola wersji |
 | `project_flow.gd`, `project_store.gd`, `project_dialog.gd` | | folder projektu, zapis/odczyt stanu, okno startowe, zapis i otwieranie `.mgdot` |
 | `geoportal_client.gd`, `geo_cache.gd`, `place_search.gd`, `place_history.gd` | | Geoportal (WMS/WFS, EPSG:2180), cache, wyszukiwarka miejsc |
@@ -37,7 +39,7 @@ Ustawienia ukryte (część stanu projektu): `tex_panels`, `tex_sheet_layout`, `
 Wątki: analiza płótna (wykrywanie, układanie, zapis JPG) wykonuje się w głównym wątku, ale jest **pomijana przy powtórnym wczytaniu** dzięki kluczowi `tex_sheet_key`
 (plik, panele, wymiary). Największy koszt – kodowanie PNG 4096² (~7 s) – zastąpiono zapisem JPG (~0,3 s).
 
-Testy: `tools/selftest.gd` (bez okna, 326 sprawdzeń), `tools/e2e_mock.gd` + `tools/mock_geoportal.py`, skrypty `tools/*_shot.gd` (zrzuty ekranu), `tools/mgdot_flow_test.gd` (zapis i odczyt `.mgdot` przez prawdziwy przepływ).
+Testy: `tools/selftest.gd` (bez okna, 342 sprawdzeń), `tools/e2e_mock.gd` + `tools/mock_geoportal.py`, skrypty `tools/*_shot.gd` (zrzuty ekranu), `tools/mgdot_flow_test.gd` (zapis i odczyt `.mgdot` przez prawdziwy przepływ).
 
 ---
 
@@ -63,6 +65,8 @@ the main scene creates them in `_ready()`. All settings are described by one sch
 | `edge_overlay.gd` | `EdgeOverlay` | edge and vertex overlay ("Edged Faces"): screen-space geometry, two passes (visible / hidden) |
 | `export_flow.gd`, `model_exporter.gd`, `model_meta.gd` | | GLB / glTF export and metadata |
 | `t3d_exporter.gd` | `T3dExporter` | T3D export for MaSzyna: submodels, LODs, TGA, `.mat`, `.inc`, nodebank |
+| `emitter_flow.gd` | `EmitterFlow` | emitters (light, audio, smoke) and channels: data in settings, 3D markers, metadata export (draft v2) |
+| `emitter_page.gd` | `EmitterPage` | the "Emitery" tab: add and edit emitters and channels |
 | `mgdot.gd` | `MgDot` | the `.mgdot` format: (atomic) packing, unpacking, manifest, version check |
 | `project_flow.gd`, `project_store.gd`, `project_dialog.gd` | | project folder, state save/load, start window, saving and opening `.mgdot` |
 | `geoportal_client.gd`, `geo_cache.gd`, `place_search.gd`, `place_history.gd` | | Geoportal (WMS/WFS, EPSG:2180), cache, place search |
@@ -74,4 +78,4 @@ Hidden settings (part of the project state): `tex_panels`, `tex_sheet_layout`, `
 Threading: the canvas analysis (detection, layout, JPG write) runs on the main thread but is **skipped on reload** thanks to the `tex_sheet_key` key
 (file, panels, dimensions). The biggest cost – encoding a 4096² PNG (~7 s) – was replaced by writing a JPG (~0.3 s).
 
-Tests: `tools/selftest.gd` (windowless, 326 checks), `tools/e2e_mock.gd` + `tools/mock_geoportal.py`, `tools/*_shot.gd` screenshot scripts, `tools/mgdot_flow_test.gd` (saving and reading `.mgdot` through the real flow).
+Tests: `tools/selftest.gd` (windowless, 342 checks), `tools/e2e_mock.gd` + `tools/mock_geoportal.py`, `tools/*_shot.gd` screenshot scripts, `tools/mgdot_flow_test.gd` (saving and reading `.mgdot` through the real flow).

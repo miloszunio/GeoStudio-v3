@@ -547,6 +547,7 @@ func _run() -> void:
 	await _chimney_checks(main)
 	await _roofgen_checks(main)
 	await _roof_type_checks(main)
+	await _emitter_checks(main)
 	await _export_checks(main)
 
 	var narrow: Array = [[0.0, 0.0], [8.0, 0.0], [8.0, 1.5], [0.0, 1.5], [0.0, 0.0]]
@@ -601,7 +602,7 @@ func _run() -> void:
 	print("== sidebar tabs")
 	var panel: SettingsPanel = main.panel
 	ok(panel != null, "tabbed sidebar built")
-	ok(panel.tab_ids() == PackedStringArray(["place", "building", "tex", "roof", "view", "app"]), "tabs follow the work flow: %s" % panel.tab_ids())
+	ok(panel.tab_ids() == PackedStringArray(["place", "building", "tex", "roof", "view", "emit", "app"]), "tabs follow the work flow: %s" % panel.tab_ids())
 	ok(main.tabs.current_tab == 0 or true, "map shown")
 	panel.select_tab("view", true)
 	ok(panel.current_tab() == "view", "tab can be selected")
@@ -648,7 +649,7 @@ func _run() -> void:
 	panel.set_filter("kamer")
 	ok(panel.visible_tab_count() == 1 and panel.current_tab() == "view", "search 'kamer' leaves only Widok and jumps there (visible %d, current %s)" % [panel.visible_tab_count(), panel.current_tab()])
 	panel.set_filter("")
-	ok(panel.visible_tab_count() == 6, "clearing the search restores all tabs")
+	ok(panel.visible_tab_count() == 7, "clearing the search restores all tabs")
 	# the hidden setting must not produce a widget but must be saved
 	ok(not panel._ctl.has("ui_last_tab"), "hidden setting has no widget")
 	main.panel.action_pressed.emit("act_cam_reset")
@@ -876,6 +877,57 @@ func _parse_t3d(path: String) -> Dictionary:
 			i += nv
 		i += 1
 	return out
+
+
+func _emitter_checks(main: Control) -> void:
+	print("== emitters")
+	var fl: EmitterFlow = main.emitters
+	ok(fl.list().is_empty() and fl.channels().is_empty(), "no emitters or channels at the start")
+	var arr: Array = []
+	for k in EmitterFlow.KINDS:
+		arr.append(fl.default_emitter(str(k[0])))
+		fl.save(arr)
+	ok(fl.list().size() == EmitterFlow.KINDS.size(), "one emitter of every kind (%d)" % fl.list().size())
+	var ids := {}
+	for e in fl.list():
+		ids[str(e["id"])] = true
+	ok(ids.size() == fl.list().size(), "emitter ids are unique")
+	var chn := {}
+	for c in fl.channels():
+		chn[str(c["id"])] = true
+	ok(chn.has("swiatla") and chn.has("latarnia") and chn.has("dym"), "channels named by emitters were created (%s)" % ",".join(chn.keys()))
+	var norm := EmitterFlow.normalize({"kind": "nonsense", "rect": [1, 2], "cone": 9999, "pitch": 500})
+	ok(str(norm["kind"]) == "light_point" and float(norm["cone"]) <= 360.0 and float(norm["pitch"]) <= 90.0, "normalize repairs unknown kind and out-of-range values")
+	var ex: Array = fl.export_list()
+	var by := {}
+	for o in ex:
+		by[str(o["id"])] = o
+	var surf: Dictionary = by.get("okno1", {})
+	ok(str(surf.get("kind")) == "light" and str(surf.get("shape")) == "surface" and (surf.get("rect", []) as Array).size() == 4 and str(surf.get("surface", "")).begins_with("p0:w"), "surface light exports kind/shape/rect/surface")
+	var spot: Dictionary = by.get("lampa1", {})
+	ok(str(spot.get("shape")) == "spot" and (spot.get("direction", []) as Array).size() == 3 and spot.has("cone_deg"), "spot light exports a direction and a cone")
+	var au: Dictionary = by.get("dzwiek1", {})
+	ok(str(au.get("kind")) == "audio" and str(au.get("pattern")) == "omni" and not au.has("clip"), "omni audio exports no clip")
+	var ad: Dictionary = by.get("dzwiek2", {})
+	ok(str(ad.get("pattern")) == "directional" and ad.has("cone_deg"), "directional audio exports a cone")
+	ok(str((by.get("dym1", {}) as Dictionary).get("kind")) == "smoke", "smoke emitter exports kind smoke")
+	var dv: Array = EmitterFlow._dir_vec(0.0, -90.0)
+	ok(absf(float(dv[1]) + 1.0) < 1e-6, "pitch -90 points straight down")
+	var gz: Node = main.building_root.get_parent().get_node_or_null("EmitterGizmos")
+	ok(gz != null and gz.get_child_count() >= 5, "markers exist in the 3D view (%d)" % (gz.get_child_count() if gz else -1))
+	var in_export := false
+	for ch in main.building_root.get_children():
+		if str(ch.name).begins_with("Emitter"):
+			in_export = true
+	ok(not in_export, "markers are not part of the exported building")
+	var info: Dictionary = main.exporter.export_info()
+	ok(not (info.get("emitters", []) as Array).is_empty() and not (info.get("channels", []) as Array).is_empty(), "export info carries emitters and channels")
+	var meta: Dictionary = ModelMeta.building(info)
+	ok((meta.get("emitters", []) as Array).size() == EmitterFlow.KINDS.size() and not (meta.get("channels", []) as Array).is_empty(), "the building meta lists the emitters and channels")
+	main.settings.set_value("model_emitters", "[]")
+	main.settings.set_value("model_channels", "[]")
+	await process_frame
+	ok(main.emitters.list().is_empty(), "emitters cleared")
 
 
 func _roof_type_checks(main: Control) -> void:

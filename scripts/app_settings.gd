@@ -174,7 +174,8 @@ func _define() -> void:
 	_tab("tex", "Tekstury", "Krok 3 z 5: tekstury", "Prompt dla GPT, płótno od GPT (wskaż plik), dobór zdjęć na ściany, relief. Bez tekstury model jest gładki.", 3)
 	_tab("roof", "Dach", "Krok 4 z 5: dach", "Wybierz typ dachu (dwuspadowy, kopertowy, własny, płaski) i ustaw go: profil na zdjęciu szczytu albo spadki krawędzi w rzucie z góry. Zmiany widać od razu. Kominy są niżej.", 4)
 	_tab("view", "Widok", "Krok 5 z 5: oglądanie", "Warstwy, światło i kamera. Niskie słońce najlepiej pokazuje relief.", 5)
-	_tab("app", "Opcje", "Program i połączenie z Geoportalem", "Rozmiar czcionki, zapis ustawień i adresy usług Geoportalu.", 0)
+	_tab("emit", "Emitery", "Emitery: światło, dźwięk, dym", "Opcjonalnie. Dodaj miejsca, które mogą świecić, grać albo dymić, i połącz je kanałami sterowania. To opis w metadanych, nic nie jest wycinane z modelu.", 0)
+	_tab("app", "Projekt", "Projekt: zapis, otwieranie i program", "Zapis i otwieranie projektu, rendery, ustawienia programu i adresy usług Geoportalu.", 0)
 
 
 	# ---------------------------------------------------------------- 1. place
@@ -223,6 +224,8 @@ func _define() -> void:
 	_add("tex_sheet_key", "string", "Klucz ułożonego arkusza", "", {"hidden": true})
 	_add("model_roof_gen", "string", "Wygenerowany dach (JSON)", "[]", {"hidden": true})
 	_add("model_roof_custom", "string", "Dach własny (JSON)", "{}", {"hidden": true})
+	_add("model_emitters", "string", "Emitery (JSON)", "[]", {"hidden": true})
+	_add("model_channels", "string", "Kanały sterowania (JSON)", "[]", {"hidden": true})
 	_button("act_chimney_editor", "Kominy – generator…", "Okno z rzutem z góry i dwoma rzutami bocznymi: dodajesz komin (szerokość, długość, wysokość z palca), ustawiasz go na dachu, przesuwasz po połaci i zmieniasz wysokość. Korpus dostaje powielany fragment ściany z arkusza.")
 	_button("act_roof_editor", "Dach dwuspadowy – profil na zdjęciu szczytu…", "Okno ze zdjęciem szczytu i rzutem z góry: rysujesz profil dachu (wierzchołki, załamania, wysunięcie), kalenicę i walmy. Zmiany od razu widać na modelu.")
 	_button("act_roof_custom", "Dach własny – rzut z góry, kierunki spadków…", "Okno z rzutem budynku z góry: kliknij krawędź i ustaw jej spadek (strzałka pokazuje kierunek) albo zrób z niej ścianę szczytową. Działa dla typu dachu „Własny”.")
@@ -351,7 +354,7 @@ func _define() -> void:
 	_add("view_grid_color", "color", "Kolor siatki", "#34404f")
 
 	# ---------------------------------------------------------------- settings
-	_section("proj", "Projekt", "app", false, "Wszystko o modelu (dane z Geoportalu, tekstura i jej podział, rendery, eksporty) leży w jednym folderze projektu.", true)
+	_section("proj", "Zapis i pliki projektu", "app", false, "Wszystko o modelu (dane z Geoportalu, tekstura i jej podział, rendery, eksporty) leży w jednym folderze projektu.", true)
 	_button("act_mgdot_save", "Zapisz projekt (.mgdot)", "Cały projekt w jednym pliku: dane z Geoportalu, zdjęcia i płótno od GPT, panele S1–S8, dach, kominy, poprawki UV, ustawienia, miniatura i użyty prompt.")
 	_button("act_mgdot_save_as", "Zapisz projekt jako…")
 	_button("act_project_switch", "Otwórz projekt / zmień folder…", "Okno z ostatnimi plikami .mgdot, folderami i przyciskiem „Otwórz plik projektu”.")
