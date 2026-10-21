@@ -33,6 +33,14 @@ func _run() -> void:
 	print("RESULT lights ", JSON.stringify(((j.get("extensions", {}) as Dictionary).get("KHR_lights_punctual", {}) as Dictionary).get("lights")))
 	for nd in j["nodes"]:
 		print("RESULT node ", nd.get("name"), " extras ", JSON.stringify(nd.get("extras", {})).substr(0, 420))
+	for nm in ["particles_ogien1", "weather_deszcz1"]:
+		var nd: Dictionary = {}
+		for x in j["nodes"]:
+			if x.get("name") == nm:
+				nd = x
+		var pf: Dictionary = nd.get("extras", {}).get("particle_fx", {})
+		print("RESULT ", nm, " particle_fx keys ", pf.keys(), " layers ", (pf.get("layers", []) as Array).size(), " eaves ", ((pf.get("eaves", {}) as Dictionary).get("edges", []) as Array).size())
+	print("RESULT fx dir ", DirAccess.get_files_at("/tmp/fx") if DirAccess.dir_exists_absolute("/tmp/fx") else "missing")
 	print("RESULT materials ", (j.get("materials", []) as Array).size(), " names ", (j.get("materials", []) as Array).map(func(m): return m.get("name")))
 	# .gltf + .bin
 	DirAccess.make_dir_recursive_absolute("/tmp/profile_gltf")

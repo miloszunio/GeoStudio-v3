@@ -28,7 +28,7 @@ Zasada nadrzędna: **model deklaruje, co ma i co może z siebie wypuścić, a ś
 
 | Pole | Wartość z GeoStudio | Skąd |
 |---|---|---|
-| `asset.generator` | `GeoStudio 3.0.3` | glTF |
+| `asset.generator` | `GeoStudio 3.0.4` | glTF |
 | `asset.copyright` | `© 2026 Autor, licencja SPDX` (np. `© 2026 Miłosz "pol102" Mindak, CC-BY-4.0`) | glTF, z ustawień „Autor” i „Domyślna licencja” |
 | `asset.extras.model_format_version` | `"0.4.0"` (tyle, ile obsługujemy) | **ich profil, wymagane** |
 | `asset.extras.osm` | tagi OSM budynku, tabela niżej | ich profil |
@@ -102,13 +102,48 @@ Ich `smoke_source` ma wszystko, czego potrzebują cztery rodzaje: `rate`, `max_p
 
 | Preset | rate [1/s] | max | lifetime [s] | speed [m/s] | size [m] | cone [rad] | growth [m/s] | acceleration [m/s²] | drag [1/s] |
 |---|---|---|---|---|---|---|---|---|---|
-| dym | 8 | 60 | 3–6 | 0,4–0,9 | 0,2–0,5 | 0,25 | 0,15 | [0, 0,15, 0] | 0,3 |
-| ogień | 40 | 120 | 0,4–0,9 | 0,8–1,6 | 0,15–0,35 | 0,2 | −0,2 | [0, 1,5, 0] | 0,5 |
-| woda | 120 | 400 | 1,2–1,8 | 5–7 | 0,04–0,08 | 0,12 | 0 | [0, −9,81, 0] | 0,05 |
-| para | 15 | 80 | 1,5–3 | 0,8–1,4 | 0,15–0,35 | 0,35 | 0,25 | [0, 0,4, 0] | 0,8 |
+| dym | 22 | 420 | 4–9 | 0,7–1,3 | 0,4–0,8 | 0,14 | 0 | [0, 0,12, 0] | 0,35 |
+| ogień | 40 | 240 | 0,5–1,1 | 0,25–0,7 | 0,6–1,0 | 0,14 | 0 | [0, 1,2, 0] | 0,5 |
+| woda | 140 | 500 | 1,0–1,6 | 5–7 | 0,05–0,09 | 0,12 | 0 | [0, −9,81, 0] | 0,05 |
+| para | 16 | 140 | 1,6–3,2 | 0,8–1,4 | 0,25–0,45 | 0,3 | 0 | [0, 0,3, 0] | 0,8 |
 
 Każdy preset dostaje **materiał** (`material.<nazwa>`, np. `material.smoke`), bo `material` jest u nich wymagany. Dym można przypiąć do komina z generatora (węzeł na szczycie komina). Ogień zwykle powinien też świecić: preset „ogień” może dołożyć obok światło punktowe (4.2).
 *Do uzgodnienia:* nazwa `smoke_source` przy ogniu i wodzie jest myląca (propozycja: `particle_source`); ogień potrzebuje mieszania addytywnego, którego standardowy glTF nie ma, więc to sprawa materiału.
+
+### 4.3a Efekty „na pełnej”: `particle_fx` (rozszerzenie GeoStudio, od 3.0.4)
+
+`smoke_source` opisuje *ile* i *jak szybko*; nie mówi, *jak to wygląda*. Żeby dym, ogień i woda wyglądały dobrze niezależnie od kosztu GPU/CPU, każdy emiter cząstek niesie obok `smoke_source` pełny opis wyglądu w `extras.particle_fx` (`fx_version` 1). Silnik Reloaded jest na Godocie, więc pola odpowiadają wprost `GPUParticles3D` / `ParticleProcessMaterial`. **To propozycja rozszerzenia – ich parser może to na razie pomijać; nic w `smoke_source` od tego nie zależy.**
+
+Efekt to lista **warstw** (`layers`; pierwsza „main” = to, co opisuje `smoke_source`). Ogień to np. płomień + poświata + iskry + żar + dym nad płomieniem, dym to kłęby + smugi. Warstwa:
+
+| Pole | Znaczenie |
+|---|---|
+| `name`, `along` | nazwa; przesunięcie wzdłuż osi emisji, m |
+| `rate`, `max_particles`, `lifetime`, `speed`, `size`, `cone_angle`, `growth`, `acceleration`, `drag` | jak w `smoke_source` |
+| `texture` | `{file, grid [h, v], frame_speed, random_frame}`: arkusz sprite'ów (`fx/<nazwa>.png`, zapisywany obok modelu; generowany proceduralnie: `smoke`, `flame`, `wisp`, `mist`, `drop`, `streak`, `spark`, `glow`, `ring`); `frame_speed` = cykli klatek na życie cząstki |
+| `blend` | `mix` (dym, woda) lub `add` (ogień, iskry) |
+| `billboard`, `aspect` | `particles` lub `fixed_y` (pionowe krople); stosunek wysokości do szerokości kwadratu |
+| `colour_over_life` | lista `[t, "#rrggbb", alfa]`, t = 0…1 życia |
+| `scale_over_life` | lista `[t, mnożnik]` (mnoży `size`; `growth` dodaje liniowy przyrost) |
+| `spin` | `[min, maks]` obrót, °/s |
+| `turbulence` | `{strength, scale, speed}`: szum zawirowań |
+| `wind` | współczynnik wpływu wiatru sceny (0 = brak); wiatr ustawia symulator |
+| `hue_variation`, `soft_depth` | rozrzut barwy; miękkie krawędzie przy zetknięciu z geometrią (m) |
+| `emission` | `{shape: point\|sphere\|box\|ring, radius, height, inner}` |
+
+Oprócz warstw: `light` (opcjonalnie): `{colour, energy, range, flicker}` – migoczące światło ognia (migotanie liczy symulator; punktowe światło glTF z 4.2 pozostaje źródłem prawdy dla zwykłych świateł).
+
+### 4.3b Deszcz: `weather_source` + `particle_fx` typu `rain` (od 3.0.4)
+
+Deszcz nie jest kurtyną nad budynkiem: **spływa po jego dachu**. Emiter `weather_rain` ma węzeł (w początku modelu) z `extras.weather_source` (`type: rain`, `intensity`, `source` = kanał, `default`) i `extras.particle_fx` (`type: rain`) opisującym, co się dzieje na modelu. Wszystko liczy się z geometrii połaci dachu, więc działa dla każdego dachu, jaki da się narysować:
+
+- `area`: prostokąt wokół budynku (m), `ground_y`, `shell_height` – warstwa, z której spadają smugi;
+- `streaks`: gęstość (`density_per_m2_s`), `speed`, `length`, `width`, `colour`, tekstura; smugi spadają **na ziemię i na połacie** (`stop_on: surface`);
+- `roof`: `surfaces[]` (`building.part_N.roof`), `area_m2`; `splash` – rozbryzgi na połaciach (`per_m2_s`, `lifetime`, `speed`, `size`); `runoff` – spływ strużkami po linii największego spadku każdej połaci (`model: flow_film`, `flow_speed`, `wetness`);
+- `eaves`: `edges[]` – dolne krawędzie dachu (`a`, `b`, `outward` – kierunek spływu w poziomie, `surface`), `length_m`, `height_m`, `fall_time_s` (z wysokości okapu), `drips` (krople) i `gutter_stream` (strumień przy mocnym deszczu), oba z gęstością na metr okapu;
+- `ground`: `ripples` (kręgi na ziemi, `orientation: flat`) i `drip_landing` (kręgi i bryzgi pod okapem, przesunięte o `offset_m`).
+
+*Do uzgodnienia z ich zespołem:* czy te pola trafiają do ich profilu (`particle_fx`, `weather_source`), czy zostają w naszej przestrzeni `geostudio`. Do czasu odpowiedzi wszystko tu jest **propozycją**, sprawdzoną tylko w podglądzie edytora (Godot), nie w Reloaded.
 
 ### 4.4 Dźwięk (propozycja do ich profilu)
 
@@ -222,3 +257,5 @@ This is a **generator profile on top of the MaSzyna Reloaded model format** ([MO
 - **Building data** (footprints, parts, roofs, chimneys, surfaces, texture) live in `asset.extras.geostudio`.
 - **Phases:** (1) header/osm/geo/ids/credits/surfaces, (2) lights, quads, particle presets, emitter drawing editor, (3) audio, LOD, validators. Open questions to the Reloaded team are listed in section 11.
 - **Not verified:** the preset values, the exporter's ability to write `asset.extras`, T3D behaviour in the simulator, and any importer behaviour in MaSzyna Reloaded.
+- **Effects (from 3.0.4):** every particle emitter also carries `extras.particle_fx` (`fx_version` 1): a list of layers (flame + glow + sparks + embers + smoke for fire; puffs + wisps for smoke; jet + mist + spray for water) with sprite sheet (`fx/<name>.png`, procedurally generated and written next to the model), blend `mix`/`add`, colour and scale over life, spin, turbulence, wind coupling, emission shape, soft depth and an optional flickering light. The fields map directly onto Godot's `GPUParticles3D` / `ParticleProcessMaterial`. A **proposal** for their profile; `smoke_source` stays the source of truth for the core numbers.
+- **Rain (from 3.0.4):** `weather_rain` writes a node with `weather_source` and `particle_fx` of type `rain` that describes rain *on the model*: streaks falling onto the ground and the roof facets, splashes on the facets, rivulets running down along the line of steepest descent (`runoff`, `flow_film`), the eave edges (`eaves.edges[]` with outward direction, length, height, fall time) with drips and gutter streams, and ripples / spray on the ground. All derived from the roof meshes, so it follows any roof. Proposal; verified only in the editor preview.

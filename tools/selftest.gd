@@ -925,6 +925,29 @@ func _emitter_checks(main: Control) -> void:
 	ok(str(ex_of.call("audio_dzwiek1")["audio_source"]["pattern"]) == "omni" and ex_of.call("audio_dzwiek2")["audio_source"].has("cone"), "audio emitters export audio_source (omni / directional cone)")
 	var gsx: Dictionary = ej["asset"]["extras"]["geostudio"]
 	ok(not (gsx.get("channels", []) as Array).is_empty(), "geostudio.channels listed")
+	var fire: Dictionary = ex_of.call("particles_ogien1")
+	var ffx: Dictionary = fire.get("particle_fx", {})
+	ok((ffx.get("layers", []) as Array).size() == 5 and ffx.has("light"), "fire exports 5 layers (flame, glow, sparks, embers, smoke) and a light")
+	ok(str(ffx["layers"][0]["texture"]["file"]) == "fx/flame.png" and str(ffx["layers"][0]["blend"]) == "add", "fire layer 0 uses the flame sheet, additive")
+	ok(FileAccess.file_exists("user://selftest_export/fx/flame.png") and FileAccess.file_exists("user://selftest_export/fx/ring.png"), "sprite sheets written next to the model (fx/*.png)")
+	var rain: Dictionary = ex_of.call("weather_deszcz1")
+	var rfx: Dictionary = rain.get("particle_fx", {})
+	ok(str(rain.get("weather_source", {}).get("type", "")) == "rain" and str(rain["weather_source"].get("source", "")) == "weather.rain", "rain exports weather_source bound to its channel")
+	var eav: Array = (rfx.get("eaves", {}) as Dictionary).get("edges", [])
+	ok(eav.size() == 2 and absf(absf(float(eav[0]["outward"][2])) - 1.0) < 0.01, "rain: the gable roof has two eaves, draining sideways (outward = ±Z)")
+	ok((rfx["roof"]["surfaces"] as Array).has("building.part_0.roof") and float(rfx["roof"]["area_m2"]) > 20.0, "rain: roof surface and area listed")
+	ok(float(rfx["eaves"]["fall_time_s"]) > 0.3, "rain: fall time of drips computed from the eave height")
+	var lay0 := FxParticles.default_layers("smoke")
+	ok(lay0.size() == 1 and str((lay0[0] as Dictionary)["fx"]["texture"]) == "wisp", "smoke preset: puffs + wisps layer")
+	var nfx := FxParticles.norm_fx({"texture": "nonsense", "blend": "x", "ramp": [[0.5, "#ff0000", 2.0], [0.0, "#00ff00", 0.5]]})
+	ok(str(nfx["texture"]) == "glow" and str(nfx["blend"]) == "mix" and float(nfx["ramp"][0][0]) == 0.0 and float(nfx["ramp"][1][2]) == 1.0, "norm_fx repairs texture, blend and sorts / clamps the ramp")
+	for tn in FxTex.names():
+		var im := FxTex.image(str(tn))
+		var mx := 0.0
+		for yy in range(0, im.get_height(), 3):
+			for xx in range(0, im.get_width(), 3):
+				mx = maxf(mx, im.get_pixel(xx, yy).a)
+		ok(mx > 0.2, "sprite sheet %s has visible pixels" % tn)
 	var gz: Node = main.building_root.get_parent().get_node_or_null("EmitterGizmos")
 	ok(gz != null and gz.get_child_count() >= 5, "markers exist in the 3D view (%d)" % (gz.get_child_count() if gz else -1))
 	var in_export := false

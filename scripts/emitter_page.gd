@@ -49,6 +49,34 @@ const PARTICLE_ROWS := [
 ]
 
 
+const FX_ROWS := [
+	["fx.turbulence.strength", "Turbulencja: siła", "float", 0.0, 10.0, 0.05, ""],
+	["fx.turbulence.scale", "Turbulencja: skala", "float", 0.1, 30.0, 0.1, ""],
+	["fx.turbulence.speed", "Turbulencja: tempo", "float", 0.0, 8.0, 0.05, ""],
+	["fx.wind", "Wpływ wiatru (0 = brak)", "float", 0.0, 4.0, 0.05, ""],
+	["fx.spin.0", "Obrót, min", "float", -720.0, 720.0, 1.0, " °/s"],
+	["fx.spin.1", "Obrót, maks", "float", -720.0, 720.0, 1.0, " °/s"],
+	["fx.frame_speed", "Animacja klatek (cykli na życie)", "float", 0.0, 10.0, 0.1, ""],
+	["fx.hue_variation", "Rozrzut barwy", "float", 0.0, 1.0, 0.01, ""],
+	["fx.soft", "Miękkie krawędzie (głębokość)", "float", 0.0, 3.0, 0.05, " m"],
+	["fx.emission.radius", "Źródło: promień", "float", 0.0, 10.0, 0.01, " m"],
+]
+const LIGHT_ROWS := [
+	["light.energy", "Światło: jasność", "float", 0.0, 100.0, 0.1, ""],
+	["light.range", "Światło: zasięg", "float", 0.5, 100.0, 0.5, " m"],
+	["light.flicker", "Światło: migotanie", "float", 0.0, 1.0, 0.05, ""],
+]
+const RAIN_ROWS := [
+	["rain.intensity", "Intensywność (0…2)", "float", 0.0, 2.0, 0.05, ""],
+	["rain.speed", "Prędkość kropel", "float", 3.0, 25.0, 0.1, " m/s"],
+	["rain.streak", "Długość smugi", "float", 0.05, 3.0, 0.05, " m"],
+	["rain.shell", "Wysokość strumienia nad powierzchnią", "float", 2.0, 40.0, 0.5, " m"],
+	["rain.margin", "Zasięg wokół budynku", "float", 1.0, 60.0, 0.5, " m"],
+]
+const RAIN_FLAGS := [["rain.splash", "Rozbryzgi na dachu"], ["rain.runoff", "Spływ strużkami po dachu"], ["rain.drips", "Krople i strumień z rynien"], ["rain.ripples", "Kręgi i bryzgi na ziemi"]]
+const TEXTURES := [["smoke", "kłęby dymu"], ["flame", "płomień"], ["wisp", "smugi"], ["mist", "mgła"], ["drop", "kropla"], ["spark", "iskra"], ["glow", "poświata"], ["streak", "smuga deszczu"], ["ring", "kręgi"]]
+
+
 func setup(main_scene) -> void:
 	app = main_scene
 	flow = app.emitters
@@ -231,10 +259,17 @@ func _row(i: int, e: Dictionary) -> Control:
 			rows = POS_ROWS + [["range", "Zasięg", "float", 0.1, 1000.0, 0.5, " m"]]
 		"audio_dir":
 			rows = POS_ROWS + DIR_ROWS + [["range", "Zasięg", "float", 0.1, 1000.0, 0.5, " m"]]
+		"weather_rain":
+			rows = RAIN_ROWS
 		"particle_smoke", "particle_fire", "particle_water", "particle_steam":
 			rows = [PARTICLE_ROWS[0]] + POS_ROWS + AIM_ROWS + PARTICLE_ROWS.slice(1)
 	for spec in rows:
 		_num_row(g, i, e, spec)
+	if kind == "weather_rain":
+		for f in RAIN_FLAGS:
+			_flag_row(g, i, e, str(f[0]), str(f[1]))
+	if EmitterFlow.kind_group(kind) == "particle":
+		_look_section(v, g, i, e)
 	if EmitterFlow.kind_group(kind) == "light":
 		var lb := Label.new()
 		lb.text = "Kolor po zapaleniu"
@@ -248,6 +283,101 @@ func _row(i: int, e: Dictionary) -> Control:
 	if EmitterFlow.kind_group(kind) == "light":
 		_num_row(g, i, e, ["strength", "Jasność / intensywność", "float", 0.0, 100.0, 0.1, ""])
 	return panel
+
+
+func _flag_row(g: GridContainer, i: int, e: Dictionary, key: String, label: String) -> void:
+	var cb := CheckBox.new()
+	cb.text = label
+	cb.button_pressed = bool(_value(e, key))
+	cb.toggled.connect(func(on: bool) -> void: _edit(i, key, on))
+	g.add_child(cb)
+	g.add_child(Control.new())
+
+
+func _choice_row(g: GridContainer, i: int, e: Dictionary, key: String, label: String, options: Array) -> void:
+	var lb := Label.new()
+	lb.text = label
+	lb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	g.add_child(lb)
+	var ob := OptionButton.new()
+	var cur := str(_value(e, key))
+	for k in range(options.size()):
+		ob.add_item(str(options[k][1]))
+		if str(options[k][0]) == cur:
+			ob.selected = k
+	ob.item_selected.connect(func(idx: int) -> void: _edit(i, key, str(options[idx][0])))
+	g.add_child(ob)
+
+
+static func _value(e: Dictionary, key: String) -> Variant:
+	var cur: Variant = e
+	for part in key.split("."):
+		if typeof(cur) == TYPE_ARRAY:
+			cur = (cur as Array)[int(part)]
+		elif typeof(cur) == TYPE_DICTIONARY:
+			cur = (cur as Dictionary).get(part, null)
+		else:
+			return null
+	return cur
+
+
+## Look of a particle emitter: sprite sheet, blend, turbulence, wind, light and the extra layers (sparks, embers, smoke ...).
+func _look_section(v: VBoxContainer, g: GridContainer, i: int, e: Dictionary) -> void:
+	var lb := Label.new()
+	lb.text = "Wygląd (silnik efektów)"
+	lb.add_theme_color_override("font_color", Color("#ffd08a"))
+	g.add_child(lb)
+	var reset := Button.new()
+	reset.text = "↺ wzór"
+	reset.tooltip_text = "Przywróć wygląd, warstwy i światło ze wzoru tego rodzaju (parametry cząstek zostają)."
+	reset.pressed.connect(func() -> void:
+		var a2 := flow.list()
+		if i < a2.size():
+			(a2[i] as Dictionary).erase("fx")
+			(a2[i] as Dictionary).erase("layers")
+			(a2[i] as Dictionary).erase("light")
+			_editing = true
+			flow.save(a2)
+			_editing = false
+			refresh())
+	g.add_child(reset)
+	_choice_row(g, i, e, "fx.texture", "Tekstura", TEXTURES)
+	_choice_row(g, i, e, "fx.blend", "Mieszanie", [["mix", "zwykłe (dym)"], ["add", "addytywne (ogień)"]])
+	for spec in FX_ROWS:
+		_num_row(g, i, e, spec)
+	if e.get("light", null) != null:
+		for spec in LIGHT_ROWS:
+			_num_row(g, i, e, spec)
+	var layers: Array = e.get("layers", [])
+	for li in range(layers.size()):
+		var l: Dictionary = layers[li]
+		var row := HBoxContainer.new()
+		var name_l := Label.new()
+		name_l.text = "warstwa: %s" % str(l["name"])
+		name_l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		row.add_child(name_l)
+		var sp := SpinBox.new()
+		sp.min_value = 0.0
+		sp.max_value = 2000.0
+		sp.step = 0.5
+		sp.suffix = " /s"
+		sp.value = float((l["ps"] as Dictionary)["rate"])
+		sp.custom_minimum_size = Vector2(110, 0)
+		sp.value_changed.connect(func(val: float) -> void: _edit(i, "layers.%d.ps.rate" % li, val))
+		row.add_child(sp)
+		var del := Button.new()
+		del.text = "✕"
+		del.tooltip_text = "Usuń tę warstwę"
+		del.pressed.connect(func() -> void:
+			var a2 := flow.list()
+			if i < a2.size() and li < ((a2[i] as Dictionary)["layers"] as Array).size():
+				((a2[i] as Dictionary)["layers"] as Array).remove_at(li)
+				_editing = true
+				flow.save(a2)
+				_editing = false
+				refresh())
+		row.add_child(del)
+		v.add_child(row)
 
 
 func _text_row(g: GridContainer, i: int, key: String, label: String, value: String) -> void:

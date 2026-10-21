@@ -2,7 +2,7 @@
 
 *Wersja polska: [PODRECZNIK.pl.md](PODRECZNIK.pl.md)*
 
-Program version: **3.0.3** (Godot 4.6). This manual covers the whole path "building from the map → 3D model → texture from ChatGPT →
+Program version: **3.0.4** (Godot 4.6). This manual covers the whole path "building from the map → 3D model → texture from ChatGPT →
 roof → chimneys → export (GLB / glTF / T3D) → `.mgdot` project file" and what to check while testing.
 **Note:** the program interface is in Polish; button and section names are quoted in Polish with a translation in brackets where it helps.
 
@@ -221,7 +221,7 @@ night-light submodel. Metadata description: [MODEL_META.md](MODEL_META.md).
 Further: **Co pokazać** (show: walls, roof, ground, helper grid), **Światło i tło** (light and background), **Kamera**, **Podłoże i siatka** (ground and grid).
 
 ### Emitters tab (draft)
-The **Emitery** tab adds places on the model that can give off light, sound or smoke: **light – surface** (window, sign), **light – point**, **light – spot** (lamp), **audio – omni**, **audio – directional**, **smoke – chimney**. They are *data only* (nothing is cut out of the mesh): small markers show them in the 3D view and they are saved in the project (`.mgdot`) and in the export metadata (`emitters`, `channels`). A **channel** is a named input that switches a group of emitters (e.g. `swiatla` lights all windows); channels are created automatically from the names you type. Draft contract: [MODEL_META.md](MODEL_META.md). A surface light is placed by wall number, distance from the wall start, height and size; the provisional surface id `p<part>:w<wall>` will be reworked when `surfaces[]` is implemented. Not verified in MaSzyna Reloaded.
+The **Emitery** tab adds places on the model that can give off light, sound or smoke: **light – surface** (window, sign), **light – point**, **light – spot** (lamp), **audio – omni**, **audio – directional**, **smoke – chimney**, **fire**, **water**, **steam**, **rain** (runs down the roof). They are *data only* (nothing is cut out of the mesh): small markers show them in the 3D view and they are saved in the project (`.mgdot`) and in the export metadata (`emitters`, `channels`). A **channel** is a named input that switches a group of emitters (e.g. `swiatla` lights all windows); channels are created automatically from the names you type. Draft contract: [MODEL_META.md](MODEL_META.md). A surface light is placed by wall number, distance from the wall start, height and size; the provisional surface id `p<part>:w<wall>` will be reworked when `surfaces[]` is implemented. Not verified in MaSzyna Reloaded. Particle emitters have layers (e.g. fire: flame, glow, sparks, embers, smoke, flickering light): set the rate of each layer in the list and the rest of the look (texture, blend, turbulence, wind, light) in the rows below; "↺ wzór" restores the factory look. **Rain** runs down the roof: drips from the eaves, rivulets on the facets, ripples on the ground; set the scene wind in Widok → Efekty. Metadata details: MODEL_META.md 4.3a and 4.3b.
 
 ## 11. Options
 

@@ -2,7 +2,7 @@
 
 *English version: [MANUAL.en.md](MANUAL.en.md)*
 
-Wersja programu: **3.0.3** (Godot 4.6). Dokument opisuje całą ścieżkę „budynek z mapy → model 3D → tekstura z ChatGPT →
+Wersja programu: **3.0.4** (Godot 4.6). Dokument opisuje całą ścieżkę „budynek z mapy → model 3D → tekstura z ChatGPT →
 dach → kominy → eksport (GLB / glTF / T3D) → plik projektu `.mgdot`” oraz to, co dokładnie sprawdzać podczas testów.
 
 ---
@@ -220,7 +220,7 @@ submodel świateł nocnych. Opis metadanych: [MODEL_META.md](MODEL_META.md).
 Dalej: **Co pokazać** (elewacje, dach, podłoże, siatka pomocnicza), **Światło i tło**, **Kamera**, **Podłoże i siatka**.
 
 ### Karta Emitery (szkic)
-Karta **Emitery** dodaje miejsca na modelu, które mogą świecić, grać albo dymić: **światło – powierzchnia** (okno, szyld), **światło – punktowe**, **światło – reflektor** (latarnia), **dźwięk – dookólny**, **dźwięk – kierunkowy**, **dym – komin**. To tylko opis (nic nie jest wycinane z siatki): w widoku 3D pokazują je małe znaczniki, a zapisują się w projekcie (`.mgdot`) i w metadanych eksportu (`emitters`, `channels`). **Kanał** to nazwane wejście, które przełącza grupę emiterów (np. `swiatla` zapala wszystkie okna); kanały powstają same z wpisanych nazw. Projekt kontraktu: [MODEL_META.md](MODEL_META.md). Światło-powierzchnię ustawia się numerem ściany, odległością od początku ściany, wysokością i rozmiarem; tymczasowy identyfikator powierzchni `p<bryła>:w<ściana>` zostanie przerobiony przy wdrożeniu `surfaces[]`. Nie sprawdzono w MaSzyna Reloaded.
+Karta **Emitery** dodaje miejsca na modelu, które mogą świecić, grać albo dymić: **światło – powierzchnia** (okno, szyld), **światło – punktowe**, **światło – reflektor** (latarnia), **dźwięk – dookólny**, **dźwięk – kierunkowy**, **dym – komin**, **ogień**, **woda**, **para**, **deszcz** (spływ po dachu). To tylko opis (nic nie jest wycinane z siatki): w widoku 3D pokazują je małe znaczniki, a zapisują się w projekcie (`.mgdot`) i w metadanych eksportu (`emitters`, `channels`). **Kanał** to nazwane wejście, które przełącza grupę emiterów (np. `swiatla` zapala wszystkie okna); kanały powstają same z wpisanych nazw. Projekt kontraktu: [MODEL_META.md](MODEL_META.md). Światło-powierzchnię ustawia się numerem ściany, odległością od początku ściany, wysokością i rozmiarem; tymczasowy identyfikator powierzchni `p<bryła>:w<ściana>` zostanie przerobiony przy wdrożeniu `surfaces[]`. Nie sprawdzono w MaSzyna Reloaded. Emitery cząstek mają warstwy (np. ogień: płomień, poświata, iskry, żar, dym, migoczące światło) – tempo każdej warstwy ustawiasz na liście, resztę wyglądu (tekstura, mieszanie, turbulencja, wiatr, światło) w wierszach poniżej; „↺ wzór” przywraca ustawienia fabryczne. **Deszcz** spływa po dachu: kropla z okapu, strużki na połaciach, kręgi na ziemi; wiatr sceny ustawiasz w Widok → Efekty. Szczegóły metadanych: MODEL_META.md 4.3a i 4.3b.
 
 ## 11. Opcje
 

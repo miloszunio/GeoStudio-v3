@@ -665,7 +665,7 @@ func _on_setting_changed(key: String) -> void:
 	elif key == "model_chimneys":
 		chimneys.rebuild()
 		emitters.rebuild_gizmos()      # smoke markers follow the chimneys
-	elif key == "model_emitters" or key == "model_channels":
+	elif key == "model_emitters" or key == "model_channels" or key == "fx_wind_speed" or key == "fx_wind_dir":
 		emitters.rebuild_gizmos()
 	elif key.begins_with("model_"):
 		if key == "model_wall_height" and not _wall_internal and settings.b("model_walls_from_tex"):

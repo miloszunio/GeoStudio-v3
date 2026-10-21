@@ -1,5 +1,25 @@
 # Historia zmian / Changelog
 
+## 3.0.4 (2026-10-21)
+
+**PL**
+- **Silnik efektów** (`fx_particles.gd`, `fx_tex.gd`): cząstki na GPU (Godot `GPUParticles3D`) z proceduralnymi arkuszami sprite'ów (kłęby dymu, płomień, smugi, kropla, iskra, poświata, kręgi), krzywymi koloru i rozmiaru w czasie życia, turbulencją, wiatrem, obrotem, miękkimi krawędziami i **warstwami**: ogień = płomień + poświata + iskry + żar + dym + migoczące światło; dym = kłęby + smugi; woda = strumień + mgiełka + bryzgi; para.
+- **Deszcz** (nowy emiter „Pogoda – deszcz”): smugi spadają na ziemię i na połacie dachu, rozbryzgi na dachu, **strużki spływające po dachu** wzdłuż linii największego spadku, krople i strumień z okapów, kręgi i bryzgi na ziemi. Wszystko z geometrii dachu, więc działa dla każdego dachu.
+- Wiatr sceny (Widok → Efekty): prędkość i kierunek znoszą dym, iskry i deszcz w podglądzie.
+- Metadane: `particle_fx` przy każdym emiterze cząstek (warstwy, tekstura, mieszanie, krzywe, turbulencja, wiatr, światło) i `weather_source` + `particle_fx` typu `rain` (powierzchnie dachu, okapy, spływ, krople, kręgi); arkusze sprite'ów zapisują się jako `fx/*.png` obok modelu. Rozszerzenie GeoStudio, propozycja dla profilu Reloaded (MODEL_META.md 4.3a, 4.3b).
+- Karta Emitery: tekstura, mieszanie, turbulencja, wiatr, obrót, światło, lista warstw (tempo, usuwanie), przycisk „↺ wzór”; parametry deszczu.
+- Presety dymu, ognia, wody i pary przestrojone (większe, gęstsze). Testy: 368 sprawdzeń; nowe `tools/fx_shot.gd`, `tools/fx_tex_test.gd`.
+- Nie sprawdzono w MaSzyna Reloaded; wygląd oceniany tylko w podglądzie edytora.
+
+**EN**
+- **Effects engine** (`fx_particles.gd`, `fx_tex.gd`): GPU particles (Godot `GPUParticles3D`) with procedural sprite sheets (smoke puffs, flame, wisps, drop, spark, glow, ripple rings), colour and scale over life, turbulence, wind, spin, soft edges and **layers**: fire = flame + glow + sparks + embers + smoke + flickering light; smoke = puffs + wisps; water = jet + mist + spray; steam.
+- **Rain** (new emitter "Pogoda – deszcz"): streaks fall onto the ground and the roof facets, splashes on the roof, **rivulets running down the roof** along the line of steepest descent, drips and gutter streams from the eaves, ripples and spray on the ground. All derived from the roof geometry, so it works for any roof.
+- Scene wind (Widok → Efekty): speed and direction blow smoke, sparks and rain in the preview.
+- Metadata: `particle_fx` on every particle emitter (layers, texture, blend, curves, turbulence, wind, light) and `weather_source` + `particle_fx` of type `rain` (roof surfaces, eaves, runoff, drips, ripples); sprite sheets are written as `fx/*.png` next to the model. A GeoStudio extension, a proposal for the Reloaded profile (MODEL_META.md 4.3a, 4.3b).
+- Emitters tab: texture, blend, turbulence, wind, spin, light, a layer list (rate, remove), a "↺ wzór" (reset to preset) button; rain parameters.
+- Smoke, fire, water and steam presets retuned (bigger, denser). Tests: 368 checks; new `tools/fx_shot.gd`, `tools/fx_tex_test.gd`.
+- Not verified in MaSzyna Reloaded; the look was judged only in the editor preview.
+
 ## 3.0.3 (2026-10-21)
 
 **PL**

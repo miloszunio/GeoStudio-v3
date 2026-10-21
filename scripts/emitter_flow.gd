@@ -15,7 +15,7 @@ const KEY := "model_emitters"
 const KEY_CH := "model_channels"
 const QUAD_OFFSET := 0.04     # the light quad stands this far in front of the wall, m
 
-## [kind id, button label, group] - group: light | particle | audio
+## [kind id, button label, group] - group: light | particle | weather | audio
 const KINDS := [
 	["light_surface", "Światło – powierzchnia (okno, szyld)", "light"],
 	["light_point", "Światło – punktowe (żarówka)", "light"],
@@ -24,20 +24,21 @@ const KINDS := [
 	["particle_fire", "Cząstki – ogień", "particle"],
 	["particle_water", "Cząstki – woda (fontanna, strumień)", "particle"],
 	["particle_steam", "Cząstki – para", "particle"],
+	["weather_rain", "Pogoda – deszcz (spływ po dachu)", "weather"],
 	["audio_omni", "Dźwięk – dookólny", "audio"],
 	["audio_dir", "Dźwięk – kierunkowy", "audio"],
 ]
 
 ## Starting values of the particle presets (docs/MODEL_META.md, 4.3). Not verified in the simulator.
 const PRESETS := {
-	"smoke": {"rate": 8.0, "max_particles": 60, "lifetime": [3.0, 6.0], "speed": [0.4, 0.9], "size": [0.2, 0.5], "cone_angle": 0.25,
-		"growth": 0.15, "acceleration": [0.0, 0.15, 0.0], "drag": 0.3, "inherit_velocity": 0.0},
-	"fire": {"rate": 40.0, "max_particles": 120, "lifetime": [0.4, 0.9], "speed": [0.8, 1.6], "size": [0.15, 0.35], "cone_angle": 0.2,
-		"growth": -0.2, "acceleration": [0.0, 1.5, 0.0], "drag": 0.5, "inherit_velocity": 0.0},
-	"water": {"rate": 120.0, "max_particles": 400, "lifetime": [1.2, 1.8], "speed": [5.0, 7.0], "size": [0.04, 0.08], "cone_angle": 0.12,
+	"smoke": {"rate": 22.0, "max_particles": 420, "lifetime": [4.0, 9.0], "speed": [0.7, 1.3], "size": [0.4, 0.8], "cone_angle": 0.14,
+		"growth": 0.0, "acceleration": [0.0, 0.12, 0.0], "drag": 0.35, "inherit_velocity": 0.0},
+	"fire": {"rate": 40.0, "max_particles": 240, "lifetime": [0.5, 1.1], "speed": [0.25, 0.7], "size": [0.6, 1.0], "cone_angle": 0.14,
+		"growth": 0.0, "acceleration": [0.0, 1.2, 0.0], "drag": 0.5, "inherit_velocity": 0.0},
+	"water": {"rate": 140.0, "max_particles": 500, "lifetime": [1.0, 1.6], "speed": [5.0, 7.0], "size": [0.05, 0.09], "cone_angle": 0.12,
 		"growth": 0.0, "acceleration": [0.0, -9.81, 0.0], "drag": 0.05, "inherit_velocity": 0.0},
-	"steam": {"rate": 15.0, "max_particles": 80, "lifetime": [1.5, 3.0], "speed": [0.8, 1.4], "size": [0.15, 0.35], "cone_angle": 0.35,
-		"growth": 0.25, "acceleration": [0.0, 0.4, 0.0], "drag": 0.8, "inherit_velocity": 0.0},
+	"steam": {"rate": 16.0, "max_particles": 140, "lifetime": [1.6, 3.2], "speed": [0.8, 1.4], "size": [0.25, 0.45], "cone_angle": 0.3,
+		"growth": 0.0, "acceleration": [0.0, 0.3, 0.0], "drag": 0.8, "inherit_velocity": 0.0},
 }
 
 ## The material every particle preset points to (`material` is required by the format): [base colour rgba, emissive rgb or null]
@@ -120,7 +121,23 @@ static func normalize(e: Dictionary) -> Dictionary:
 		"chimney": maxi(int(e.get("chimney", 1 if kind == "particle_smoke" else 0)), 0),
 	}
 	if is_particle:
-		out["ps"] = _merge_ps(preset_of(kind), e.get("ps", null))
+		var preset := preset_of(kind)
+		out["ps"] = _merge_ps(preset, e.get("ps", null))
+		var pf: Dictionary = (FxParticles.PRESETS[preset]["fx"] as Dictionary).duplicate(true)
+		if typeof(e.get("fx")) == TYPE_DICTIONARY:
+			for k in (e["fx"] as Dictionary).keys():
+				pf[k] = e["fx"][k]
+		out["fx"] = FxParticles.norm_fx(pf)
+		var lays: Array = []
+		if typeof(e.get("layers")) == TYPE_ARRAY:
+			for l in e["layers"]:
+				lays.append(FxParticles.norm_layer(l))
+		else:
+			lays = FxParticles.default_layers(preset)
+		out["layers"] = lays
+		out["light"] = FxParticles.norm_light(e["light"]) if e.has("light") else FxParticles.default_light(preset)
+	if kind == "weather_rain":
+		out["rain"] = FxParticles.norm_rain(e.get("rain", null))
 	return out
 
 
@@ -197,6 +214,7 @@ func next_id(kind: String, arr: Array) -> String:
 		"particle_fire": base = "ogien"
 		"particle_water": base = "woda"
 		"particle_steam": base = "para"
+		"weather_rain": base = "deszcz"
 		"audio_omni", "audio_dir": base = "dzwiek"
 	var n := 1
 	while true:
@@ -256,6 +274,8 @@ func default_emitter(kind: String) -> Dictionary:
 			e["pitch"] = 75.0
 		"particle_steam":
 			e["channel"] = "building.steam"
+		"weather_rain":
+			e["channel"] = "weather.rain"
 		"audio_omni":
 			e["range"] = 30.0
 		"audio_dir":
@@ -386,6 +406,8 @@ func build_export_nodes(ids: Dictionary) -> Dictionary:
 				nodes.append(ln)
 			"audio_omni", "audio_dir":
 				nodes.append(_audio_node(e, sid))
+			"weather_rain":
+				nodes.append(_rain_node(e, sid))
 			_:
 				if kind.begins_with("particle_"):
 					var pn := _particle_node(e, sid)
@@ -497,9 +519,42 @@ func _particle_node(e: Dictionary, sid: String) -> Node3D:
 	node.name = "particles_" + str(e["id"])
 	node.position = position_of(e)
 	node.basis = _basis_y_to(dir_of(float(e["yaw"]), float(e["pitch"])))    # the stream leaves along the node's +Y
-	node.set_meta("gltf_extras", {"semantic_id": sid, "smoke_source": src,
+	node.set_meta("gltf_extras", {"semantic_id": sid, "smoke_source": src, "particle_fx": FxParticles.export_dict(e),
 		"geostudio": {"kind": str(e["kind"]), "preset": preset, "emission_axis": "+Y"}})
 	return node
+
+
+func _rain_node(e: Dictionary, sid: String) -> Node3D:
+	var node := Node3D.new()
+	node.name = "weather_" + str(e["id"])
+	var d := FxRain.export_dict(e, app.building_root, _polys())
+	var ws := {"type": "rain", "intensity": float((e["rain"] as Dictionary)["intensity"])}
+	var chan := str(e["channel"]).strip_edges()
+	if chan != "":
+		ws["source"] = chan
+		ws["default"] = maxf(channel_default(chan), 0.0)
+	node.set_meta("gltf_extras", {"semantic_id": sid, "weather_source": ws, "particle_fx": d, "geostudio": {"kind": "weather_rain"}})
+	return node
+
+
+## Names of every sprite sheet the emitters use (the exporter writes them as fx/<name>.png next to the model).
+func used_textures() -> Array:
+	var seen := {}
+	for e in list():
+		for t in FxParticles.used_textures(e):
+			seen[str(t)] = true
+	return seen.keys()
+
+
+func _polys() -> Array:
+	var out: Array = []
+	for P in app.last_rt:
+		out.append(P["pts"])
+	return out
+
+
+func _wind() -> Vector3:
+	return FxParticles.wind_vec(app.settings.f("fx_wind_speed"), app.settings.f("fx_wind_dir"))
 
 
 func _audio_node(e: Dictionary, sid: String) -> Node3D:
@@ -574,6 +629,13 @@ static func _mat(col: Color, alpha := 0.85) -> StandardMaterial3D:
 func _gizmo(e: Dictionary) -> Node3D:
 	var kind := str(e["kind"])
 	var group := kind_group(kind)
+	if group == "weather":
+		var rain := FxRain.build(e, app.building_root, _polys(), _wind())
+		rain.name = "Rain"
+		var rh := Node3D.new()
+		rh.name = "Emitter_" + str(e["id"])
+		rh.add_child(rain)
+		return rh
 	var col := Color(str(e["colour"]))
 	if group == "audio":
 		col = Color("#52a9ff")
@@ -627,73 +689,6 @@ func _gizmo(e: Dictionary) -> Node3D:
 			holder.basis = Basis(xax, -dir, -zax)
 	mi.material_override = _mat(col)
 	if group == "particle":
-		holder.add_child(_preview_particles(e, preset_of(kind)))
-		(mi.material_override as StandardMaterial3D).albedo_color.a = 0.25     # the cone only marks the nozzle
+		holder.add_child(FxParticles.build(e, _wind()))
+		(mi.material_override as StandardMaterial3D).albedo_color.a = 0.12     # the cone only marks the nozzle
 	return holder
-
-
-## Live preview of a particle emitter (CPUParticles3D in the same Godot the simulator runs on): the same numbers as `smoke_source`.
-## The holder's -Y axis is the emission direction, so the particles fly along local -Y.
-func _preview_particles(e: Dictionary, preset: String) -> CPUParticles3D:
-	var ps: Dictionary = e["ps"]
-	var life: Array = ps["lifetime"]
-	var spd: Array = ps["speed"]
-	var siz: Array = ps["size"]
-	var lmean := (float(life[0]) + float(life[1])) * 0.5
-	var smean := maxf((float(siz[0]) + float(siz[1])) * 0.5, 0.001)
-	var p := CPUParticles3D.new()
-	p.name = "Preview"
-	p.amount = clampi(int(ceil(float(ps["rate"]) * float(life[1]))), 1, maxi(int(ps["max_particles"]), 1))
-	p.lifetime = maxf(float(life[1]), 0.05)
-	p.lifetime_randomness = clampf(1.0 - float(life[0]) / maxf(float(life[1]), 0.001), 0.0, 1.0)
-	p.preprocess = p.lifetime
-	p.direction = Vector3(0, -1, 0)
-	p.spread = rad_to_deg(float(ps["cone_angle"]))
-	p.initial_velocity_min = float(spd[0])
-	p.initial_velocity_max = float(spd[1])
-	var acc: Array = ps["acceleration"]
-	p.gravity = Vector3(float(acc[0]), float(acc[1]), float(acc[2]))
-	p.local_coords = false
-	p.damping_min = float(ps["drag"])
-	p.damping_max = float(ps["drag"])
-	p.scale_amount_min = float(siz[0]) / smean
-	p.scale_amount_max = float(siz[1]) / smean
-	var end_scale := clampf(1.0 + float(ps["growth"]) * lmean / smean, 0.05, 20.0)
-	var curve := Curve.new()
-	curve.add_point(Vector2(0, 1.0))
-	curve.add_point(Vector2(1, end_scale))
-	p.scale_amount_curve = curve
-	var spec: Array = PARTICLE_MATERIALS[preset]
-	var bc: Array = spec[0]
-	var ramp := Gradient.new()
-	var base := Color(bc[0], bc[1], bc[2], 1.0)
-	match preset:
-		"fire":
-			ramp.colors = PackedColorArray([Color(1, 0.95, 0.5, 0.9), Color(1, 0.45, 0.1, 0.8), Color(0.3, 0.05, 0.0, 0.0)])
-			ramp.offsets = PackedFloat32Array([0.0, 0.45, 1.0])
-		_:
-			ramp.colors = PackedColorArray([Color(base, 0.0), Color(base, float(bc[3])), Color(base, 0.0)])
-			ramp.offsets = PackedFloat32Array([0.0, 0.2, 1.0])
-	p.color_ramp = ramp
-	var q := QuadMesh.new()
-	q.size = Vector2(smean * 1.0, smean * 1.0)
-	var m := StandardMaterial3D.new()
-	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	m.billboard_mode = BaseMaterial3D.BILLBOARD_PARTICLES
-	m.vertex_color_use_as_albedo = true
-	m.blend_mode = BaseMaterial3D.BLEND_MODE_ADD if preset == "fire" else BaseMaterial3D.BLEND_MODE_MIX
-	var gt := GradientTexture2D.new()
-	gt.fill = GradientTexture2D.FILL_RADIAL
-	gt.fill_from = Vector2(0.5, 0.5)
-	gt.fill_to = Vector2(0.5, 0.0)
-	gt.width = 64
-	gt.height = 64
-	var g := Gradient.new()
-	g.colors = PackedColorArray([Color(1, 1, 1, 1), Color(1, 1, 1, 0)])
-	gt.gradient = g
-	m.albedo_texture = gt
-	q.material = m
-	p.mesh = q
-	p.emitting = true
-	return p

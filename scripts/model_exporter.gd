@@ -146,6 +146,13 @@ static func export_glb(building_root: Node3D, info: Dictionary, path: String) ->
 	if err != OK:
 		out["error"] = "Zapis glTF nie powiódł się (kod %d)." % err
 		return out
+	if emitters != null:
+		var tex_names: Array = emitters.used_textures()
+		if not tex_names.is_empty():
+			var fx_dir := path.get_base_dir().path_join("fx")
+			DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(fx_dir) if fx_dir.begins_with("user://") or fx_dir.begins_with("res://") else fx_dir)
+			for tn in tex_names:
+				FxTex.save_png(str(tn), fx_dir.path_join("%s.png" % str(tn)))
 	var sidecar := path.get_basename() + ".meta.json"
 	var f := FileAccess.open(sidecar, FileAccess.WRITE)
 	if f != null:
