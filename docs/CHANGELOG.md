@@ -1,5 +1,10 @@
 # Historia zmian / Changelog
 
+## Docs (2026-10-21, po 3.0.2)
+
+**PL** – `MODEL_META.md` przepisany jako profil generatora nad formatem modeli MaSzyna Reloaded (MODEL_FORMAT 0.4.0): mapowanie na ich pola, trzy rodziny emiterów (światło, cząstki, dźwięk), kanały, autorstwo, etapy wdrożenia i pytania do ich zespołu. Dotychczasowy opis (wersja 1, to co zapisuje eksporter) przeniesiony do `MODEL_META_V1.md`.
+**EN** – `MODEL_META.md` rewritten as a generator profile on top of the MaSzyna Reloaded model format (MODEL_FORMAT 0.4.0): mapping to their fields, three emitter families (light, particles, audio), channels, credits, rollout phases and questions for their team. The previous description (version 1, what the exporter writes) moved to `MODEL_META_V1.md`.
+
 ## 3.0.2 (2026-10-21)
 
 **PL**
