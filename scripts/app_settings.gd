@@ -174,7 +174,7 @@ func _define() -> void:
 	_tab("tex", "Tekstury", "Krok 3 z 5: tekstury", "Prompt dla GPT, płótno od GPT (wskaż plik), dobór zdjęć na ściany, relief. Bez tekstury model jest gładki.", 3)
 	_tab("roof", "Dach", "Krok 4 z 5: dach", "Wybierz typ dachu (dwuspadowy, kopertowy, własny, płaski) i ustaw go: profil na zdjęciu szczytu albo spadki krawędzi w rzucie z góry. Zmiany widać od razu. Kominy są niżej.", 4)
 	_tab("view", "Widok", "Krok 5 z 5: oglądanie", "Warstwy, światło i kamera. Niskie słońce najlepiej pokazuje relief.", 5)
-	_tab("emit", "Emitery", "Emitery: światło, dźwięk, dym", "Opcjonalnie. Dodaj miejsca, które mogą świecić, grać albo dymić, i połącz je kanałami sterowania. To opis w metadanych, nic nie jest wycinane z modelu.", 0)
+	_tab("emit", "Emitery", "Emitery: światło, efekty, dźwięk", "Opcjonalnie. Dodaj miejsca, które mogą świecić, grać, dymić, palić się albo padać deszczem, i połącz je kanałami sterowania. To opis w metadanych, nic nie jest wycinane z modelu.", 0)
 	_tab("app", "Projekt", "Projekt: zapis, otwieranie i program", "Zapis i otwieranie projektu, rendery, ustawienia programu i adresy usług Geoportalu.", 0)
 
 

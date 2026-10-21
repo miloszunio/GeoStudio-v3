@@ -219,6 +219,9 @@ submodel świateł nocnych. Opis metadanych: [MODEL_META.md](MODEL_META.md).
 
 Dalej: **Co pokazać** (elewacje, dach, podłoże, siatka pomocnicza), **Światło i tło**, **Kamera**, **Podłoże i siatka**.
 
+### Lista emiterów, wybór w 3D i lustro (3.0.5)
+Karta Emitery: lista pokazuje wszystkie emitery; kliknij, by edytować parametry poniżej, ⧉ powiela, ✕ usuwa. W widoku 3D kliknij delikatną kulę wokół emitera, by go zaznaczyć; przeciągaj kolorowe strzałki, by go przesunąć. Edytor kominów: „Lustro poziome/pionowe” powtarza fragment ściany na przemian z jego odbiciem (A A′ A A′).
+
 ### Karta Emitery (szkic)
 Karta **Emitery** dodaje miejsca na modelu, które mogą świecić, grać albo dymić: **światło – powierzchnia** (okno, szyld), **światło – punktowe**, **światło – reflektor** (latarnia), **dźwięk – dookólny**, **dźwięk – kierunkowy**, **dym – komin**, **ogień**, **woda**, **para**, **deszcz** (spływ po dachu). To tylko opis (nic nie jest wycinane z siatki): w widoku 3D pokazują je małe znaczniki, a zapisują się w projekcie (`.mgdot`) i w metadanych eksportu (`emitters`, `channels`). **Kanał** to nazwane wejście, które przełącza grupę emiterów (np. `swiatla` zapala wszystkie okna); kanały powstają same z wpisanych nazw. Projekt kontraktu: [MODEL_META.md](MODEL_META.md). Światło-powierzchnię ustawia się numerem ściany, odległością od początku ściany, wysokością i rozmiarem; tymczasowy identyfikator powierzchni `p<bryła>:w<ściana>` zostanie przerobiony przy wdrożeniu `surfaces[]`. Nie sprawdzono w MaSzyna Reloaded. Emitery cząstek mają warstwy (np. ogień: płomień, poświata, iskry, żar, dym, migoczące światło) – tempo każdej warstwy ustawiasz na liście, resztę wyglądu (tekstura, mieszanie, turbulencja, wiatr, światło) w wierszach poniżej; „↺ wzór” przywraca ustawienia fabryczne. **Deszcz** spływa po dachu: kropla z okapu, strużki na połaciach, kręgi na ziemi; wiatr sceny ustawiasz w Widok → Efekty. Szczegóły metadanych: MODEL_META.md 4.3a i 4.3b.
 

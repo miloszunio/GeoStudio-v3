@@ -26,6 +26,7 @@ var _drag := ""                  # "", "move" or "top"
 var _drag_off := Vector2.ZERO
 var _list: ItemList
 var _frag_view: Control
+var _tile_view: Control
 var _frag_drag := false
 var _frag_a := Vector2.ZERO
 var _bx0 := 0.0
@@ -245,10 +246,14 @@ func _build() -> void:
 		elev.add_child(v)
 
 	# right: numbers + texture
+	var side_scroll := ScrollContainer.new()
+	side_scroll.custom_minimum_size.x = 340
+	side_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	body.add_child(side_scroll)
 	var side := VBoxContainer.new()
-	side.custom_minimum_size.x = 320
+	side.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	side.add_theme_constant_override("separation", 6)
-	body.add_child(side)
+	side_scroll.add_child(side)
 	_row(side, "w", "Szerokość (oś X)", 0.1, 6.0, 0.01, " m")
 	_row(side, "l", "Długość (oś Z)", 0.1, 6.0, 0.01, " m")
 	_row(side, "h", "Wysokość nad dachem", 0.0, 12.0, 0.01, " m")
@@ -281,18 +286,34 @@ func _build() -> void:
 	side.add_child(opt)
 	_ctl["tex"] = opt
 	_frag_view = Control.new()
-	_frag_view.custom_minimum_size = Vector2(300, 150)
+	_frag_view.custom_minimum_size = Vector2(300, 110)
 	_frag_view.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_frag_view.clip_contents = true
 	_frag_view.draw.connect(_draw_frag)
 	_frag_view.gui_input.connect(_frag_input)
 	side.add_child(_frag_view)
 	var fh := Label.new()
-	fh.text = "Przeciągnij prostokąt na obrazie – ten fragment będzie się powtarzał na ścianach komina."
+	fh.text = "Przeciągnij prostokąt – ten fragment powtarza się na ścianach komina."
 	fh.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	fh.add_theme_color_override("font_color", Color(0.7, 0.75, 0.85))
 	side.add_child(fh)
 	_row(side, "tscale", "Wielkość fragmentu (skala)", 0.1, 10.0, 0.05, "×")
+	for mk in [["mirror_x", "Lustro poziome: ABBAABBA zamiast AAAAAAAA"], ["mirror_y", "Lustro pionowe: co drugi rząd odbity"]]:
+		var cb := CheckBox.new()
+		cb.text = str(mk[1])
+		cb.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		cb.toggled.connect(func(on: bool) -> void:
+			if _busy or sel < 0:
+				return
+			items[sel][str(mk[0])] = on
+			_after_edit())
+		side.add_child(cb)
+		_ctl[str(mk[0])] = cb
+	_tile_view = Control.new()
+	_tile_view.custom_minimum_size = Vector2(300, 56)
+	_tile_view.clip_contents = true
+	_tile_view.draw.connect(_draw_tiles)
+	side.add_child(_tile_view)
 
 	var foot := HBoxContainer.new()
 	foot.add_theme_constant_override("separation", 8)
@@ -352,6 +373,8 @@ func _redraw() -> void:
 		(_views[m] as Control).queue_redraw()
 	if is_instance_valid(_frag_view):
 		_frag_view.queue_redraw()
+	if is_instance_valid(_tile_view):
+		_tile_view.queue_redraw()
 
 
 func _refresh_list() -> void:
@@ -371,6 +394,9 @@ func _sync_controls() -> void:
 		sb.editable = have
 		if have:
 			sb.value = float(items[sel][id])
+	for mk in ["mirror_x", "mirror_y"]:
+		(_ctl[mk] as CheckBox).disabled = not have
+		(_ctl[mk] as CheckBox).button_pressed = bool(items[sel][mk]) if have else false
 	(_ctl["cap"] as CheckBox).disabled = not have
 	(_ctl["cap"] as CheckBox).button_pressed = bool(items[sel]["cap"]) if have else false
 	var opt := _ctl["tex"] as OptionButton
@@ -517,6 +543,39 @@ func _draw_frag() -> void:
 	var fr := Rect2(ir.position + Vector2(float(f[0]), float(f[1])) * ir.size, Vector2(float(f[2]), float(f[3])) * ir.size)
 	_frag_view.draw_rect(fr, Color(1.0, 0.85, 0.2, 0.25))
 	_frag_view.draw_rect(fr, Color(1.0, 0.85, 0.2), false, 2.0)
+
+
+## How the selected fragment repeats: a strip of eight repeats (and a second row with the vertical mirror).
+func _draw_tiles() -> void:
+	var sz := _tile_view.size
+	_tile_view.draw_rect(Rect2(Vector2.ZERO, sz), Color(0.09, 0.11, 0.15))
+	if sel < 0 or sel >= items.size():
+		return
+	var c: Dictionary = items[sel]
+	var key := flow._region_key(c)
+	if key == "":
+		return
+	var tex: Texture2D = app.atlas.get_texture(key)
+	if tex == null:
+		return
+	var f: Array = c["frag"]
+	var src := Rect2(float(f[0]) * tex.get_width(), float(f[1]) * tex.get_height(), float(f[2]) * tex.get_width(), float(f[3]) * tex.get_height())
+	var rows := 2 if bool(c["mirror_y"]) else 1
+	var n := 8
+	var tw := sz.x / float(n)
+	var th := minf(sz.y / float(rows) - 12.0, tw * src.size.y / maxf(src.size.x, 1.0))
+	th = maxf(th, 8.0)
+	for r in range(rows):
+		for i in range(n):
+			var flip_x := bool(c["mirror_x"]) and i % 2 == 1
+			var flip_y := r == 1
+			var x0 := float(i) * tw
+			var y0 := 12.0 + float(r) * th
+			var dst := Rect2(x0 + (tw if flip_x else 0.0), y0 + (th if flip_y else 0.0), -tw if flip_x else tw, -th if flip_y else th)
+			_tile_view.draw_texture_rect_region(tex, dst, src)
+			if r == 0:
+				var letter := "A′" if flip_x else "A"
+				_tile_view.draw_string(ThemeDB.fallback_font, Vector2(x0 + tw * 0.5 - 6.0, 10.0), letter, HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color(1.0, 0.85, 0.2))
 
 
 # ---------------------------------------------------------------------------------------------- input

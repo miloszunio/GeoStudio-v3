@@ -49,7 +49,10 @@ const PARTICLE_MATERIALS := {
 	"steam": [[0.95, 0.95, 0.95, 0.35], null],
 }
 
+signal selection_changed
+
 var app
+var selected := ""        # id of the emitter being edited (list or 3D view)
 
 
 func _init(main_scene) -> void:
@@ -254,7 +257,12 @@ func default_emitter(kind: String) -> Dictionary:
 	match kind:
 		"light_surface":
 			e["channel"] = "building.lights"
-			e["rect"] = [0.6, minf(1.0, maxf(wall_h - 1.4, 0.2)), 1.0, 1.2]
+			var n_here := 0
+			for o in arr:
+				if str(o["kind"]) == "light_surface" and int(o["part"]) == 0 and int(o["wall"]) == 0:
+					n_here += 1
+			var wlen := float(fr["len"]) if not fr.is_empty() else 6.0
+			e["rect"] = [fposmod(0.6 + 1.5 * n_here, maxf(wlen - 1.2, 0.8)), minf(1.0, maxf(wall_h - 1.4, 0.2)), 1.0, 1.2]
 		"light_point":
 			e["channel"] = "building.lights"
 			e["range"] = 8.0
@@ -606,6 +614,8 @@ func rebuild_gizmos() -> void:
 		parent.remove_child(old)
 		old.queue_free()
 	var arr := list()
+	if selected != "" and find_emitter(selected).is_empty():
+		selected = ""
 	if arr.is_empty():
 		return
 	var root := Node3D.new()
@@ -614,7 +624,177 @@ func rebuild_gizmos() -> void:
 	for e in arr:
 		var n := _gizmo(e)
 		if n != null:
+			n.set_meta("emitter_id", str(e["id"]))
 			root.add_child(n)
+		var ps := EmitterPickSphere.new()
+		ps.setup(str(e["id"]), marker_colour(e), str(e["id"]) == selected)
+		ps.position = pick_position(e)
+		root.add_child(ps)
+	if selected != "":
+		_add_sel_gizmo(root, find_emitter(selected))
+
+
+func _gizmo_root() -> Node3D:
+	if not is_instance_valid(app.building_root) or app.building_root.get_parent() == null:
+		return null
+	return app.building_root.get_parent().get_node_or_null("EmitterGizmos") as Node3D
+
+
+func find_emitter(id: String) -> Dictionary:
+	for e in list():
+		if str(e["id"]) == id:
+			return e
+	return {}
+
+
+func marker_colour(e: Dictionary) -> Color:
+	var kind := str(e["kind"])
+	match kind_group(kind):
+		"audio":
+			return Color("#52a9ff")
+		"weather":
+			return Color("#8fb8ff")
+		"particle":
+			match preset_of(kind):
+				"smoke": return Color("#b9c2cc")
+				"fire": return Color("#ff7a30")
+				"water": return Color("#4aa8ff")
+				_: return Color("#e8eef5")
+	return Color(str(e["colour"]))
+
+
+## Centre of the click ball of an emitter.
+func pick_position(e: Dictionary) -> Vector3:
+	if str(e["kind"]) == "light_surface":
+		var fr := wall_frame(int(e["part"]), int(e["wall"]))
+		if not fr.is_empty():
+			var r: Array = e["rect"]
+			var d: Vector2 = fr["d"]
+			var a: Vector2 = fr["a"]
+			var nn: Vector2 = fr["n"]
+			var c2 := a + d * (float(r[0]) + float(r[2]) * 0.5) + nn * 0.04
+			return Vector3(c2.x, float(r[1]) + float(r[3]) * 0.5, c2.y)
+	return position_of(e)
+
+
+## Move handles of an emitter: [{dir, colour}]; none for rain (it has no place of its own).
+func axes_of(e: Dictionary) -> Array:
+	var kind := str(e["kind"])
+	if kind_group(kind) == "weather":
+		return []
+	if kind == "light_surface":
+		var fr := wall_frame(int(e["part"]), int(e["wall"]))
+		var out: Array = []
+		if not fr.is_empty():
+			var d: Vector2 = fr["d"]
+			out.append({"dir": Vector3(d.x, 0.0, d.y), "colour": Color("#e84d4d")})
+		out.append({"dir": Vector3.UP, "colour": Color("#4de86a")})
+		return out
+	return [{"dir": Vector3.RIGHT, "colour": Color("#e84d4d")}, {"dir": Vector3.UP, "colour": Color("#4de86a")},
+		{"dir": Vector3.BACK, "colour": Color("#4d8ce8")}]
+
+
+func _add_sel_gizmo(root: Node3D, e: Dictionary) -> void:
+	if e.is_empty():
+		return
+	var ax := axes_of(e)
+	if ax.is_empty():
+		return
+	var g := EmitterGizmo.new()
+	root.add_child(g)
+	g.setup(ax)
+	g.position = pick_position(e)
+
+
+func select(id: String) -> void:
+	if selected == id:
+		return
+	selected = id
+	refresh_selection()
+	selection_changed.emit()
+
+
+## Selection changed: restyle the balls and rebuild the handles (the emitters themselves are not touched).
+func refresh_selection() -> void:
+	var root := _gizmo_root()
+	if root == null:
+		return
+	for c in root.get_children():
+		if c is EmitterPickSphere:
+			var ps := c as EmitterPickSphere
+			ps.set_selected(ps.emitter_id == selected, marker_colour(find_emitter(ps.emitter_id)))
+	var old := root.get_node_or_null("SelGizmo")
+	if old != null:
+		root.remove_child(old)
+		old.queue_free()
+	if selected != "":
+		_add_sel_gizmo(root, find_emitter(selected))
+
+
+## Shows an emitter that is being dragged without saving it (saving rebuilds the particle systems).
+func apply_live(e: Dictionary) -> void:
+	var root := _gizmo_root()
+	if root == null:
+		return
+	var id := str(e["id"])
+	var pos := pick_position(e)
+	var pk := root.get_node_or_null("Pick_" + id)
+	if pk != null:
+		(pk as Node3D).position = pos
+	var g := root.get_node_or_null("SelGizmo")
+	if g != null:
+		(g as Node3D).position = pos
+	var holder := root.get_node_or_null("Emitter_" + id)
+	if holder == null or kind_group(str(e["kind"])) == "weather":
+		return
+	if str(e["kind"]) == "light_surface":
+		root.remove_child(holder)
+		holder.queue_free()
+		var nh := _gizmo(e)
+		if nh != null:
+			root.add_child(nh)
+	else:
+		(holder as Node3D).position = position_of(e)
+
+
+func commit_emitter(e: Dictionary) -> void:
+	var arr := list()
+	for i in range(arr.size()):
+		if str(arr[i]["id"]) == str(e["id"]):
+			arr[i] = normalize(e)
+	save(arr)
+
+
+func delete_emitter(id: String) -> void:
+	var arr := list()
+	for i in range(arr.size()):
+		if str(arr[i]["id"]) == id:
+			arr.remove_at(i)
+			break
+	if selected == id:
+		selected = ""
+	save(arr)
+	selection_changed.emit()
+
+
+func duplicate_emitter(id: String) -> void:
+	var arr := list()
+	for e in arr:
+		if str(e["id"]) == id:
+			var c: Dictionary = (e as Dictionary).duplicate(true)
+			c["id"] = next_id(str(c["kind"]), arr)
+			var p: Array = c["pos"]
+			c["pos"] = [float(p[0]) + 1.0, float(p[1]), float(p[2])]
+			if str(c["kind"]) == "light_surface":
+				var r: Array = c["rect"]
+				r[0] = float(r[0]) + float(r[2]) + 0.3
+			if int(c.get("chimney", 0)) > 0:
+				c["chimney"] = 0
+				c["pos"] = [position_of(e).x + 1.0, position_of(e).y, position_of(e).z]
+			arr.append(c)
+			save(arr)
+			select(str(c["id"]))
+			return
 
 
 static func _mat(col: Color, alpha := 0.85) -> StandardMaterial3D:

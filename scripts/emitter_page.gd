@@ -6,6 +6,7 @@ extends VBoxContainer
 var app
 var flow: EmitterFlow
 var _list: VBoxContainer
+var _props: VBoxContainer
 var _channels_box: VBoxContainer
 var _editing := false       # our own edit: the settings signal must not rebuild the rows under the user's cursor
 
@@ -109,9 +110,17 @@ func setup(main_scene) -> void:
 	h2.text = "Emitery na modelu"
 	h2.add_theme_font_size_override("font_size", 15)
 	add_child(h2)
+	var tip := Label.new()
+	tip.text = "Wybierz emiter z listy albo kliknij jego jasną kulę w widoku 3D. Zaznaczony ma strzałki do przesuwania."
+	tip.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	tip.add_theme_color_override("font_color", Color("#8794a6"))
+	add_child(tip)
 	_list = VBoxContainer.new()
-	_list.add_theme_constant_override("separation", 8)
+	_list.add_theme_constant_override("separation", 3)
 	add_child(_list)
+	_props = VBoxContainer.new()
+	_props.add_theme_constant_override("separation", 6)
+	add_child(_props)
 
 	var h3 := Label.new()
 	h3.text = "Kanały sterowania"
@@ -124,28 +133,65 @@ func setup(main_scene) -> void:
 	app.settings.changed.connect(func(key: String) -> void:
 		if (key == EmitterFlow.KEY or key == EmitterFlow.KEY_CH) and not _editing:
 			refresh())
+	flow.selection_changed.connect(refresh)
 	refresh()
 
 
 func _add(kind: String) -> void:
 	var arr := flow.list()
-	arr.append(flow.default_emitter(kind))
+	var e := flow.default_emitter(kind)
+	arr.append(e)
 	flow.save(arr)
+	flow.select(str(e["id"]))
 	refresh()
 
 
 func refresh() -> void:
-	for ch in _list.get_children():
-		_list.remove_child(ch)
-		ch.queue_free()
+	for box in [_list, _props]:
+		for ch in (box as Node).get_children():
+			(box as Node).remove_child(ch)
+			ch.queue_free()
 	var arr := flow.list()
 	if arr.is_empty():
 		var none := Label.new()
 		none.text = "Brak emiterów. Użyj przycisków powyżej."
 		none.add_theme_color_override("font_color", Color("#8794a6"))
 		_list.add_child(none)
+	var sel := -1
 	for i in range(arr.size()):
-		_list.add_child(_row(i, arr[i]))
+		var e: Dictionary = arr[i]
+		var on := str(e["id"]) == flow.selected
+		if on:
+			sel = i
+		var row := HBoxContainer.new()
+		row.name = "ListRow_%d" % i
+		var b := Button.new()
+		b.toggle_mode = true
+		b.button_pressed = on
+		b.text = "%s   ·   %s" % [str(e["id"]), EmitterFlow.kind_label(str(e["kind"]))]
+		b.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		b.clip_text = true
+		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		b.pressed.connect(func() -> void: flow.select("" if str(e["id"]) == flow.selected else str(e["id"])))
+		row.add_child(b)
+		var dup := Button.new()
+		dup.text = "⧉"
+		dup.tooltip_text = "Powiel ten emiter"
+		dup.pressed.connect(func() -> void: flow.duplicate_emitter(str(e["id"])))
+		row.add_child(dup)
+		var del := Button.new()
+		del.text = "✕"
+		del.name = "Del_%d" % i
+		del.tooltip_text = "Usuń ten emiter"
+		del.pressed.connect(func() -> void: flow.delete_emitter(str(e["id"])))
+		row.add_child(del)
+		_list.add_child(row)
+	if sel >= 0:
+		var h := Label.new()
+		h.text = "Właściwości: %s" % str(arr[sel]["id"])
+		h.add_theme_font_size_override("font_size", 15)
+		_props.add_child(h)
+		_props.add_child(_row(sel, arr[sel]))
 	_refresh_channels()
 
 
@@ -234,11 +280,7 @@ func _row(i: int, e: Dictionary) -> Control:
 	var del := Button.new()
 	del.text = "✕"
 	del.tooltip_text = "Usuń ten emiter"
-	del.pressed.connect(func() -> void:
-		var a2 := flow.list()
-		a2.remove_at(i)
-		flow.save(a2)
-		refresh())
+	del.pressed.connect(func() -> void: flow.delete_emitter(str(e["id"])))
 	top.add_child(del)
 
 	var g := GridContainer.new()
@@ -463,8 +505,11 @@ func _edit(i: int, key: String, value: Variant, rebuild := false) -> void:
 	var arr := flow.list()
 	if i >= arr.size():
 		return
+	var old_id := str(arr[i]["id"])
 	if not _set_path(arr[i], key, value):
 		return
+	if key == "id" and flow.selected == old_id:
+		flow.selected = str(value)
 	_editing = true
 	flow.save(arr)
 	_editing = false

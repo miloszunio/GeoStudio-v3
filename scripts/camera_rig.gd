@@ -152,10 +152,16 @@ func _on_viewport_gui_input(event: InputEvent) -> void:
 		var mb := event as InputEventMouseButton
 		if mb.button_index == MOUSE_BUTTON_LEFT:
 			if mb.pressed:
+				if app.emitter_pick.press(mb.position):
+					return                                           # an emitter's move arrow was grabbed
 				_press_pos = mb.position
 				_press_moved = 0.0
+			elif app.emitter_pick.dragging:
+				app.emitter_pick.release()
+				return
 			elif _press_moved < 5.0:
-				app._select_face(app._pick_face(mb.position))     # a click, not a drag: pick the surface
+				if not app.emitter_pick.click(mb.position):       # a click, not a drag: an emitter, else the surface
+					app._select_face(app._pick_face(mb.position))
 			dragging = mb.pressed
 		elif mb.button_index == MOUSE_BUTTON_MIDDLE:
 			panning = mb.pressed
@@ -165,6 +171,8 @@ func _on_viewport_gui_input(event: InputEvent) -> void:
 		elif mb.pressed and mb.button_index == MOUSE_BUTTON_WHEEL_DOWN:
 			orbit_distance *= 1.0 + app.settings.f("view_cam_zoom_step")
 			_update_camera_transform()
+	elif event is InputEventMouseMotion and app.emitter_pick.dragging:
+		app.emitter_pick.motion((event as InputEventMouseMotion).position)
 	elif event is InputEventMouseMotion and panning:
 		var pm := event as InputEventMouseMotion
 		var per_px = 2.0 * orbit_distance * tan(deg_to_rad(app.camera.fov) * 0.5) / maxf(app.viewport_container.size.y, 1.0)

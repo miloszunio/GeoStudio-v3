@@ -1,5 +1,17 @@
 # Historia zmian / Changelog
 
+## 3.0.5 (2026-10-21)
+
+**PL**
+- **Emitery – zarządzanie**: lista emiterów w karcie Emitery (zaznacz, ⧉ powiel, ✕ usuń); parametry zaznaczonego emitera pod listą. W widoku 3D każdy emiter ma delikatną, klikalną kulę; zaznaczony świeci na złoto i dostaje **strzałki przesuwania** (osie X/Y/Z, światło powierzchniowe: 2 osie). Strzałki mają pierwszeństwo przed kulami. Przeciągnięcie emitera przypiętego do komina odpina go od komina. Puste kliknięcie odznacza. Nowe pliki: `emitter_pick.gd`, `emitter_gizmo.gd`, `emitter_pick_sphere.gd`.
+- **Komin – lustro**: w edytorze kominów dwa pola „Lustro poziome/pionowe”: powtarzany fragment ściany jest na przemian odbijany (A A′ A A′ zamiast A A A A), więc krawędzie łączą się bez szwu. Pasek podglądu kafelków; prawa kolumna edytora przewija się.
+- Testy: 378 sprawdzeń; nowy `tools/emitter_pick_test.gd`.
+
+**EN**
+- **Emitter management**: an emitter list in the Emitters tab (select, ⧉ duplicate, ✕ delete) with the selected emitter's properties below. In the 3D view each emitter has a faint clickable ball; the selected one glows gold and gets **move arrows** (X/Y/Z; surface light: 2 axes). Arrows take priority over the balls. Dragging an emitter bound to a chimney detaches it. A click on empty space deselects. New files: `emitter_pick.gd`, `emitter_gizmo.gd`, `emitter_pick_sphere.gd`.
+- **Chimney mirror**: two "mirror horizontal/vertical" options in the chimney editor: the repeated wall fragment alternates with its flipped copy (A A′ A A′ instead of A A A A), so edges meet seamlessly. Tile preview strip; the editor's right column scrolls.
+- Tests: 378 checks; new `tools/emitter_pick_test.gd`.
+
 ## 3.0.4 (2026-10-21)
 
 **PL**

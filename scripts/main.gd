@@ -21,6 +21,7 @@ var projflow: ProjectFlow
 var roofed: RoofFlow
 var chimneys: ChimneyFlow
 var emitters: EmitterFlow
+var emitter_pick: EmitterPick
 var atlasflow: AtlasFlow
 
 var settings: AppSettings
@@ -152,6 +153,7 @@ func _ready() -> void:
 	roofed = RoofFlow.new(self)
 	chimneys = ChimneyFlow.new(self)
 	emitters = EmitterFlow.new(self)
+	emitter_pick = EmitterPick.new(self)
 	atlasflow = AtlasFlow.new(self)
 	_apply_ui_theme()
 	_build_ui()

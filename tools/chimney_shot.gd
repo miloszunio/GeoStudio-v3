@@ -31,6 +31,9 @@ func _run() -> void:
 	ed._auto_part(c2)
 	ed.items.append(c2)
 	ed.sel = 1
+	if OS.get_environment("MIRROR") != "":
+		c2["mirror_x"] = true
+		c2["mirror_y"] = OS.get_environment("MIRROR") == "xy"
 	ed._after_edit()
 	for _i in 8: await process_frame
 	var out := OS.get_environment("SHOT_DIR")

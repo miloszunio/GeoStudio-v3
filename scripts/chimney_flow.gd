@@ -8,7 +8,8 @@ extends RefCounted
 ## One chimney: {part, x, z (centre, building coordinates in m), w (along X), l (along Z),
 ##               h (height above the roof surface at the UP-SLOPE side of the footprint),
 ##               cap (concrete cap), tex ("auto" = long wall of the sheet, or a region key),
-##               frag [x, y, w, h] (share of the region picture), tscale (picture size factor)}
+##               frag [x, y, w, h] (share of the region picture), tscale (picture size factor),
+##               mirror_x / mirror_y (every other repeat is mirrored: A A' A A' - the edges of neighbouring repeats match)}
 
 const KEY := "model_chimneys"
 const CAP_T := 0.08          # thickness of the cap, m
@@ -39,6 +40,7 @@ static func normalize(e: Dictionary) -> Dictionary:
 		"cap": bool(e.get("cap", true)), "tex": str(e.get("tex", "auto")),
 		"frag": [fx, fy, clampf(float(f[2]), 0.02, 1.0 - fx), clampf(float(f[3]), 0.02, 1.0 - fy)],
 		"tscale": clampf(float(e.get("tscale", 1.0)), 0.1, 10.0),
+		"mirror_x": bool(e.get("mirror_x", false)), "mirror_y": bool(e.get("mirror_y", false)),
 	}
 
 
@@ -150,6 +152,27 @@ func _frag_rect(c: Dictionary, img: Image) -> Rect2i:
 	return r.intersection(Rect2i(0, 0, w, h))
 
 
+## The tile that repeats: the picture alone, or with its mirror image next to it (mx) and / or below it (my), so that
+## neighbouring repeats always meet with matching edges (A A' A A' ...).
+static func mirror_tile(pic: Image, mx: bool, my: bool) -> Image:
+	var out := pic
+	if mx:
+		var f := out.duplicate() as Image
+		f.flip_x()
+		var wide := Image.create(out.get_width() * 2, out.get_height(), false, out.get_format())
+		wide.blit_rect(out, Rect2i(Vector2i.ZERO, out.get_size()), Vector2i.ZERO)
+		wide.blit_rect(f, Rect2i(Vector2i.ZERO, f.get_size()), Vector2i(out.get_width(), 0))
+		out = wide
+	if my:
+		var g := out.duplicate() as Image
+		g.flip_y()
+		var tall := Image.create(out.get_width(), out.get_height() * 2, false, out.get_format())
+		tall.blit_rect(out, Rect2i(Vector2i.ZERO, out.get_size()), Vector2i.ZERO)
+		tall.blit_rect(g, Rect2i(Vector2i.ZERO, g.get_size()), Vector2i(0, out.get_height()))
+		out = tall
+	return out
+
+
 ## Size in metres of one repeat of the fragment.
 func frag_size_m(c: Dictionary) -> Vector2:
 	var key := _region_key(c)
@@ -160,7 +183,9 @@ func frag_size_m(c: Dictionary) -> Vector2:
 	var ppm: float = app.settings.f("tex_px_per_m")
 	if ppm <= 0.0:
 		ppm = DEFAULT_PPM
-	return Vector2(float(r.size.x), float(r.size.y)) / ppm * float(c["tscale"])
+	var sz := Vector2(float(r.size.x), float(r.size.y)) / ppm * float(c["tscale"])
+	# a mirrored repeat is a tile of two pictures (picture + its mirror image), so one repeat is twice as long
+	return Vector2(sz.x * (2.0 if bool(c["mirror_x"]) else 1.0), sz.y * (2.0 if bool(c["mirror_y"]) else 1.0))
 
 
 func _shaft_material(c: Dictionary) -> StandardMaterial3D:
@@ -172,7 +197,7 @@ func _shaft_material(c: Dictionary) -> StandardMaterial3D:
 		var img: Image = app.atlas.region(key)["img"]
 		var r := _frag_rect(c, img)
 		if r.size.x >= 2 and r.size.y >= 2:
-			var crop := img.get_region(r)
+			var crop := mirror_tile(img.get_region(r), bool(c["mirror_x"]), bool(c["mirror_y"]))
 			crop.generate_mipmaps()
 			m.albedo_texture = ImageTexture.create_from_image(crop)
 			m.texture_repeat = true
