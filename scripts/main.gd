@@ -848,6 +848,8 @@ func _on_action(id: String) -> void:
 			atlasflow._export_normals()
 		"act_tex_next":
 			settings.set_value("tex_variant", (settings.i("tex_variant") + 1) % 100)
+		"act_env_reset_bad":
+			scenery.reset_bad()
 		"act_cam_reset":
 			rig._reset_camera()
 		"act_src_import":

@@ -31,7 +31,7 @@ func _run() -> void:
 		main.emitters.save(arr)
 	main.tabs.current_tab = 1
 	var t0 := Time.get_ticks_msec()
-	main.scenery.apply()
+	main.scenery.apply(true)
 	print("RESULT scenery build ", Time.get_ticks_msec() - t0, " ms; children ", main.scenery.get_child_count())
 	for ch in main.scenery.get_children():
 		if ch is MultiMeshInstance3D:

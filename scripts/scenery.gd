@@ -24,18 +24,57 @@ func _init(main_scene) -> void:
 	add_child(_timer)
 
 
-const GUARD := "user://scenery_guard"
-var _guard_timer: Timer
+const GUARD := "user://scenery_guard"        # holds the id of the part that was being put on screen
+const BAD_FILE := "user://scenery_bad.txt"   # parts that took the program down on this computer; they are skipped
+const LOG_FILE := "user://scenery.log"
+const STAGE_WAIT := 0.7                      # seconds each part is shown before the next one is added (first build per run only)
+var _gen := 0
+var _proven := false                         # the staged build of this run finished without dying
+var _bad: Array = []
 
 
-## First build at program start. A leftover guard file means the previous run died while the surroundings were on screen
-## (a graphics driver problem), so they start switched off and can be turned on again in the View tab.
+func _log(msg: String) -> void:
+	var f := FileAccess.open(LOG_FILE, FileAccess.READ_WRITE if FileAccess.file_exists(LOG_FILE) else FileAccess.WRITE)
+	if f != null:
+		f.seek_end()
+		f.store_line("%s  %s" % [Time.get_datetime_string_from_system(), msg])
+		f.close()
+
+
+func _load_bad() -> void:
+	_bad.clear()
+	if FileAccess.file_exists(BAD_FILE):
+		for line in FileAccess.get_file_as_string(BAD_FILE).split("\n", false):
+			_bad.append(line.strip_edges())
+
+
+func _save_bad() -> void:
+	var f := FileAccess.open(BAD_FILE, FileAccess.WRITE)
+	if f != null:
+		f.store_string("\n".join(PackedStringArray(_bad)))
+		f.close()
+
+
+func reset_bad() -> void:
+	_bad.clear()
+	_save_bad()
+	_log("skipped parts list cleared")
+	schedule()
+
+
+## First build at program start. The surroundings are put on screen part by part; the id of the part being shown is kept in a guard file.
+## If the previous run died (a graphics driver problem), the part named in the guard is remembered as bad and skipped from now on,
+## so the rest of the scene still comes up and the culprit is found without anyone reading a log.
 func startup() -> void:
+	_load_bad()
 	if FileAccess.file_exists(GUARD):
+		var id := FileAccess.get_file_as_string(GUARD).strip_edges()
 		DirAccess.remove_absolute(ProjectSettings.globalize_path(GUARD))
-		app.settings.set_value("view_env_on", false)
-		app._set_status("Otoczenie wyłączone, bo poprzednie uruchomienie zakończyło się awarią. Włączysz je w Widok → Otoczenie.")
-		return
+		if id != "" and not _bad.has(id):
+			_bad.append(id)
+			_save_bad()
+		_log("previous run died while showing '%s'; it will be skipped" % id)
+		app._set_status("Poprzednie uruchomienie wysypało się na części otoczenia „%s”. Pomijam ją, reszta wchodzi. Lista pominiętych: Widok → Otoczenie." % id)
 	schedule()
 
 
@@ -44,19 +83,11 @@ func _exit_tree() -> void:
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(GUARD))
 
 
-func _arm_guard() -> void:
+func _mark(id: String) -> void:
 	var f := FileAccess.open(GUARD, FileAccess.WRITE)
 	if f != null:
-		f.store_string("1")
+		f.store_string(id)
 		f.close()
-	if _guard_timer == null:
-		_guard_timer = Timer.new()
-		_guard_timer.one_shot = true
-		_guard_timer.wait_time = 12.0
-		_guard_timer.timeout.connect(func() -> void:
-			DirAccess.remove_absolute(ProjectSettings.globalize_path(GUARD)))
-		add_child(_guard_timer)
-	_guard_timer.start()
 
 
 ## Rebuild after a short pause (sliders send many changes).
@@ -66,7 +97,7 @@ func schedule() -> void:
 
 func _clear() -> void:
 	for c in get_children():
-		if c != _timer and c != _guard_timer:
+		if c != _timer:
 			remove_child(c)
 			c.queue_free()
 	_mats.clear()
@@ -92,12 +123,16 @@ func update_visibility() -> void:
 		ground_node.visible = app.settings.b("view_show_ground")
 
 
-func apply() -> void:
+## instant = everything at once (tests, rebuilds after the first successful pass); otherwise part by part, see startup().
+func apply(instant := false) -> void:
+	_gen += 1
+	var gen := _gen
 	_clear()
 	var s = app.settings
-	active = s.b("view_env_on")
+	var want: bool = s.b("view_env_on")
 	var env: Environment = app.env
-	if not active:
+	active = false
+	if not want:
 		_restore_environment(env)
 		app._apply_view(false)
 		return
@@ -105,16 +140,67 @@ func apply() -> void:
 	var seed_v: int = s.i("view_env_seed")
 	var b: AABB = app.current_bounds
 	var fp := Rect2(b.position.x, b.position.z, maxf(b.size.x, 1.0), maxf(b.size.z, 1.0))
-	_arm_guard()
-	_environment(env, season, s.f("view_env_haze"))
 	_road_setup(fp, s)
-	_ground(fp, season)
+	var holder := Node3D.new()                      # parts are built here first and put into the scene one by one
+	_ground(holder, fp, season)
 	var rng := RandomNumberGenerator.new()
 	rng.seed = seed_v
-	SceneryGrass.build(self, fp, _road, s.f("view_env_grass"), season, seed_v, _mats)
+	_clouds(holder, s.f("view_env_clouds"), rng)
+	SceneryGrass.build(holder, fp, _road, s.f("view_env_grass"), season, seed_v, _mats)
 	var sites := _tree_sites(fp, s.i("view_env_trees"), rng, deg_to_rad(s.f("view_cam_yaw")))
-	SceneryTrees.build(self, sites, season, seed_v + 1)
-	_clouds(s.f("view_env_clouds"), rng)
+	SceneryTrees.build(holder, sites, season, seed_v + 1)
+	var parts: Array = [{"id": "env"}]
+	for c in holder.get_children():
+		parts.append({"id": String(c.name), "node": c})
+	for p in parts:
+		if p["id"] == "MeadowGround":
+			parts.erase(p)
+			parts.insert(0, p)
+			break
+	if instant or _proven:
+		for p in parts:
+			if _bad.has(p["id"]):
+				continue
+			_put(p, env, season, s.f("view_env_haze"))
+		_finish(holder)
+		return
+	_log("staged build start (%d parts, skipped: %s)" % [parts.size(), ",".join(PackedStringArray(_bad))])
+	for p in parts:
+		if gen != _gen:
+			holder.queue_free()
+			return
+		var id: String = p["id"]
+		if _bad.has(id):
+			_log("skip " + id)
+			continue
+		_mark(id)
+		_log("show " + id)
+		_put(p, env, season, s.f("view_env_haze"))
+		if id == "MeadowGround":
+			app._apply_view(false)
+		await get_tree().create_timer(STAGE_WAIT).timeout
+	if gen != _gen:
+		holder.queue_free()
+		return
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(GUARD))
+	_proven = true
+	_log("staged build finished")
+	_finish(holder)
+
+
+func _put(p: Dictionary, env: Environment, season: String, haze: float) -> void:
+	if p["id"] == "env":
+		_environment(env, season, haze)
+		return
+	var n: Node = p["node"]
+	n.get_parent().remove_child(n)
+	add_child(n)
+	if p["id"] == "MeadowGround":
+		active = true
+
+
+func _finish(holder: Node3D) -> void:
+	holder.queue_free()
 	set_wind()
 	app._apply_view(false)
 
@@ -167,7 +253,7 @@ func _road_setup(fp: Rect2, s) -> void:
 	_road = {"on": on, "n": n, "off": support + s.f("view_env_road_dist") + w * 0.5, "w": w}
 
 
-func _ground(fp: Rect2, season: String) -> void:
+func _ground(parent: Node3D, fp: Rect2, season: String) -> void:
 	var size := maxf(float(app.settings.i("view_ground_size")), 900.0)
 	var pm := PlaneMesh.new()
 	pm.size = Vector2(size, size)
@@ -192,7 +278,7 @@ func _ground(fp: Rect2, season: String) -> void:
 	m.set_shader_parameter("pad_min", fp.position - Vector2(0.4, 0.4))
 	m.set_shader_parameter("pad_max", fp.end + Vector2(0.4, 0.4))
 	ground_node.material_override = m
-	add_child(ground_node)
+	parent.add_child(ground_node)
 
 
 func _tree_sites(fp: Rect2, near_n: int, rng: RandomNumberGenerator, cam_yaw: float) -> Array:
@@ -269,7 +355,7 @@ static func _site(kind: String, p: Vector2, rng: RandomNumberGenerator, far: boo
 	return {"kind": kind, "pos": Vector3(p.x, 0, p.y), "h": h, "far": far, "yaw": rng.randf() * TAU}
 
 
-func _clouds(cover: float, rng: RandomNumberGenerator) -> void:
+func _clouds(parent: Node3D, cover: float, rng: RandomNumberGenerator) -> void:
 	if cover <= 0.0:
 		return
 	var range_m := 1600.0
@@ -310,4 +396,4 @@ func _clouds(cover: float, rng: RandomNumberGenerator) -> void:
 	_cloud_mat.set_shader_parameter("range", range_m)
 	_cloud_mat.set_shader_parameter("cover", clampf(0.55 + cover * 0.6, 0.0, 1.0))
 	mi.material_override = _cloud_mat
-	add_child(mi)
+	parent.add_child(mi)

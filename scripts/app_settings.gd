@@ -320,6 +320,7 @@ func _define() -> void:
 	_add("view_env_road", "bool", "Kawałek drogi", true)
 	_add("view_env_road_side", "float", "Droga: z której strony", 180.0, {"min": 0.0, "max": 360.0, "step": 5.0, "suffix": " °", "tip": "Kierunek od budynku do drogi (0° = w stronę +Z, 90° = w stronę −X)."})
 	_add("view_env_road_dist", "float", "Droga: odległość od budynku", 14.0, {"min": 3.0, "max": 60.0, "step": 1.0, "suffix": " m"})
+	_button("act_env_reset_bad", "Otoczenie: odblokuj pominięte części", "Po awarii programu część otoczenia, na której się wysypał, jest pomijana. Ten przycisk czyści listę i buduje wszystko od nowa. Dziennik: scenery.log w folderze danych programu.")
 	_add("view_env_seed", "int", "Układ otoczenia (ziarno losowania)", 7, {"min": 0, "max": 9999, "step": 1, "tip": "Inna wartość = inne rozmieszczenie drzew, trawy i chmur."})
 	_section("view_layers", "Co pokazać", "view", false, "", true)
 	_add("view_show_walls", "bool", "Pokaż elewacje", true)

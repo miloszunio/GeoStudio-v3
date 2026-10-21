@@ -1,5 +1,15 @@
 # Historia zmian / Changelog
 
+## 3.0.8 (2026-10-22)
+
+**PL**
+- Otoczenie wchodzi do sceny **część po części** (podłoże, niebo i mgiełka, chmury, trawa, kwiaty, pnie, korony drzew), przy pierwszym budowaniu po starcie, co ok. 0,7 s. Przed każdą częścią program zapisuje jej nazwę. Jeśli program się wysypie (sterownik grafiki), przy następnym starcie **tylko ta część jest pomijana**, a reszta sceny wchodzi. Zamiast wyłączać całe otoczenie jak w 3.0.7. Przycisk „Otoczenie: odblokuj pominięte części” (Widok → Otoczenie) czyści listę. Dziennik `scenery.log` leży w folderze danych programu (`%APPDATA%\Godot\app_userdata\Photo-to-3D Studio v3\`).
+- Kolejne przebudowy (suwaki) idą już od razu, bez etapów. Testy: 382 sprawdzenia.
+
+**EN**
+- The surroundings now enter the scene **part by part** (ground, sky and haze, clouds, grass, flowers, trunks, crowns), on the first build after start, about 0.7 s apart. Before each part the program writes its name. If the program dies (graphics driver), the next start **skips only that part** and the rest of the scene comes up, instead of switching the whole surroundings off as in 3.0.7. The button "Otoczenie: odblokuj pominięte części" (View → Otoczenie) clears the list. The log `scenery.log` is in the program's data folder (`%APPDATA%\Godot\app_userdata\Photo-to-3D Studio v3\`).
+- Later rebuilds (sliders) run at once, without stages. Tests: 382 checks.
+
 ## 3.0.7 (2026-10-21)
 
 **PL**
