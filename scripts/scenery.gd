@@ -24,6 +24,41 @@ func _init(main_scene) -> void:
 	add_child(_timer)
 
 
+const GUARD := "user://scenery_guard"
+var _guard_timer: Timer
+
+
+## First build at program start. A leftover guard file means the previous run died while the surroundings were on screen
+## (a graphics driver problem), so they start switched off and can be turned on again in the View tab.
+func startup() -> void:
+	if FileAccess.file_exists(GUARD):
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(GUARD))
+		app.settings.set_value("view_env_on", false)
+		app._set_status("Otoczenie wyłączone, bo poprzednie uruchomienie zakończyło się awarią. Włączysz je w Widok → Otoczenie.")
+		return
+	schedule()
+
+
+func _exit_tree() -> void:
+	# a normal exit clears the guard; only a crash leaves it behind
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(GUARD))
+
+
+func _arm_guard() -> void:
+	var f := FileAccess.open(GUARD, FileAccess.WRITE)
+	if f != null:
+		f.store_string("1")
+		f.close()
+	if _guard_timer == null:
+		_guard_timer = Timer.new()
+		_guard_timer.one_shot = true
+		_guard_timer.wait_time = 12.0
+		_guard_timer.timeout.connect(func() -> void:
+			DirAccess.remove_absolute(ProjectSettings.globalize_path(GUARD)))
+		add_child(_guard_timer)
+	_guard_timer.start()
+
+
 ## Rebuild after a short pause (sliders send many changes).
 func schedule() -> void:
 	_timer.start()
@@ -31,7 +66,7 @@ func schedule() -> void:
 
 func _clear() -> void:
 	for c in get_children():
-		if c != _timer:
+		if c != _timer and c != _guard_timer:
 			remove_child(c)
 			c.queue_free()
 	_mats.clear()
@@ -70,6 +105,7 @@ func apply() -> void:
 	var seed_v: int = s.i("view_env_seed")
 	var b: AABB = app.current_bounds
 	var fp := Rect2(b.position.x, b.position.z, maxf(b.size.x, 1.0), maxf(b.size.z, 1.0))
+	_arm_guard()
 	_environment(env, season, s.f("view_env_haze"))
 	_road_setup(fp, s)
 	_ground(fp, season)
@@ -116,13 +152,6 @@ func _environment(env: Environment, season: String, haze: float) -> void:
 	env.fog_light_color = hor.lerp(Color(0.8, 0.86, 0.92), 0.4)
 	env.fog_density = 0.0004 + 0.0026 * haze
 	env.fog_sky_affect = 0.0
-	if RenderingServer.get_current_rendering_method() != "gl_compatibility":
-		env.ssao_enabled = true
-		env.ssao_radius = 1.2
-		env.ssao_intensity = 1.4
-		env.glow_enabled = true
-		env.glow_intensity = 0.35
-		env.glow_bloom = 0.05
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_SKY
 	env.ambient_light_energy = app.settings.f("view_ambient_energy") * 1.3
 

@@ -161,7 +161,7 @@ func _ready() -> void:
 	_build_viewport()
 	_setup_materials()
 	_apply_view(true)
-	scenery.schedule()
+	scenery.startup()
 	if DisplayServer.get_name() != "headless":
 		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN if settings.b("app_fullscreen") else DisplayServer.WINDOW_MODE_MAXIMIZED)
 

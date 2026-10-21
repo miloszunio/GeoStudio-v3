@@ -1,5 +1,15 @@
 # Historia zmian / Changelog
 
+## 3.0.7 (2026-10-21)
+
+**PL**
+- Poprawka awarii zaraz po starcie na Windowsie (Forward+) zgłoszonej przy 3.0.6. Nie udało się jej odtworzyć (środowisko testowe nie ma Vulkana), więc usunięto najbardziej podejrzany element, czyli SSAO i poświatę włączane przy otoczeniu tylko w Forward+.
+- Zabezpieczenie: przed budową otoczenia program zapisuje znacznik, a po 12 s pracy go kasuje. Jeśli poprzedni start zakończył się awarią, otoczenie startuje wyłączone (z komunikatem) i włączysz je w Widok → Otoczenie. Jeśli awaria wróci, prześlij `godot.log` z `%APPDATA%\Godot\app_userdata\Photo-to-3D Studio v3\logs\`.
+
+**EN**
+- Fix for the crash right after start on Windows (Forward+) reported with 3.0.6. It could not be reproduced (the test environment has no Vulkan), so the most suspicious part was removed: the SSAO and glow that were switched on with the surroundings, Forward+ only.
+- Safety net: before building the surroundings the program writes a marker and deletes it after 12 s of running. If the previous start ended in a crash, the surroundings start switched off (with a message) and can be turned on in View → Otoczenie. If the crash returns, send `godot.log` from `%APPDATA%\Godot\app_userdata\Photo-to-3D Studio v3\logs\`.
+
 ## 3.0.6 (2026-10-21)
 
 **PL**
