@@ -6,7 +6,7 @@
 
 Pick a building on the Polish [Geoportal](https://www.geoportal.gov.pl) map, get its footprint from the land-and-building register (EGiB) and the orthophoto,
 build a 3D model and texture it from photos of the real building. ChatGPT cleans the photos and arranges them on one canvas (the program writes the prompt); the program cuts the canvas,
-maps it onto walls and roof, lets you fix every surface, draw the roof on the gable photo and place chimneys. It exports **GLB/glTF with metadata**
+maps it onto walls and roof, lets you fix every surface, draw the roof on the gable photo and place chimneys, and add **effects** (fire, smoke, steam, water, rain running off the roof, light and sound emitters). It exports **GLB/glTF with metadata**
 and **T3D for the MaSzyna train simulator**. The whole project is saved in one **`.mgdot`** file.
 
 > **Purpose.** GeoStudio is a tool made for creating models for the **MaSzyna** train simulator, and in particular for **MaSzyna Reloaded** (the Godot-based edition).
@@ -54,7 +54,7 @@ godot --headless --path . --export-release "Linux"   build/linux/GeoStudio.x86_6
 
 ## Work in progress – next steps
 
-- **The whole metadata section** (`docs/MODEL_META.md`, the `model_meta` block, per-part data, how the simulator side reads it) still has to be worked through and finished.
+- **Metadata:** the exporter writes the MaSzyna Reloaded profile by default (`docs/MODEL_META.md`), including particle effects (`particle_fx`) and rain (`weather_source`) as our extension; it still has to be agreed with the Reloaded team and checked in the simulator.
 - **Cut-outs on the panel** (the sector canvas) for elements that imitate lighting – lit windows, lamps, `light_on` surfaces – need work: how they are cut, marked and exported to T3D (currently a neutral `light_on00` without a mask).
 
 ## Status – what works and what was not verified

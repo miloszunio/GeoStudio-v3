@@ -29,7 +29,7 @@ Rozpakowany folder dostaje znacznik `.mgdot_from` z czasem zapisu źródła; dzi
 ## 2. Eksport glTF / GLB
 
 `ModelExporter` zapisuje przez `GLTFDocument` (Godot): Y w górę, metry. GLB: `<nazwa>.glb`; glTF: `<nazwa>.gltf` + plik `.bin` + obrazy w osobnym katalogu `exports/gltf/<nazwa>/`.
-Obok każdego pliku leży `<nazwa>.meta.json`. Znaczenie modelu jest w metadanych (`extras.meta`), nie w nazwach – patrz [MODEL_META.md](MODEL_META.md).
+Obok każdego pliku leży `<nazwa>.meta.json`. Znaczenie modelu jest w metadanych, nie w nazwach: `asset.extras` (`model_format_version`, `osm`, `geo`, `geostudio`), `semantic_id` na węzłach, warstwy świateł, `KHR_lights_punctual`, `smoke_source`, `particle_fx`, `weather_source`, `audio_source` – patrz [MODEL_META.md](MODEL_META.md). Układ v1 (`extras.meta`) dopisuje opcja „Eksport: dodaj stary układ metadanych”. Jeśli są emitery cząstek lub deszcz, obok modelu powstaje katalog `fx/` z arkuszami sprite'ów (`*.png`).
 
 ## 3. Eksport T3D (MaSzyna)
 
@@ -110,7 +110,7 @@ The unpacked folder gets a `.mgdot_from` marker with the source save time; openi
 ## 2. glTF / GLB export
 
 `ModelExporter` writes through Godot's `GLTFDocument`: Y up, metres. GLB: `<name>.glb`; glTF: `<name>.gltf` + a `.bin` file + images in a separate directory `exports/gltf/<name>/`.
-Next to each file there is `<name>.meta.json`. The meaning of the model lives in metadata (`extras.meta`), not in names – see [MODEL_META.md](MODEL_META.md).
+Next to each file there is `<name>.meta.json`. The meaning of the model lives in metadata, not in names: `asset.extras` (`model_format_version`, `osm`, `geo`, `geostudio`), `semantic_id` on nodes, light layers, `KHR_lights_punctual`, `smoke_source`, `particle_fx`, `weather_source`, `audio_source` – see [MODEL_META.md](MODEL_META.md). The v1 layout (`extras.meta`) is added by the option "Eksport: dodaj stary układ metadanych". With particle or rain emitters a `fx/` folder with sprite sheets (`*.png`) is written next to the model.
 
 ## 3. T3D export (MaSzyna)
 

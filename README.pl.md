@@ -6,7 +6,7 @@
 
 Wskaż budynek na mapie [Geoportalu](https://www.geoportal.gov.pl), pobierz jego obrys z ewidencji (EGiB) i ortofotomapę, zbuduj model 3D
 i oteksturuj go ze zdjęć rzeczywistego budynku. Zdjęcia czyści i układa w jedno płótno ChatGPT (prompt generuje program), program tnie płótno, nakłada
-na ściany i dach, pozwala poprawić każdą powierzchnię, narysować dach na zdjęciu szczytu i postawić kominy. Eksportuje **GLB/glTF z metadanymi**
+na ściany i dach, pozwala poprawić każdą powierzchnię, narysować dach na zdjęciu szczytu i postawić kominy oraz dodać **efekty** (ogień, dym, para, woda, deszcz spływający po dachu, emitery światła i dźwięku). Eksportuje **GLB/glTF z metadanymi**
 oraz **T3D dla symulatora MaSzyna**. Cały projekt zapisuje w jednym pliku **`.mgdot`**.
 
 > **Przeznaczenie.** GeoStudio to narzędzie dedykowane tworzeniu modeli dla symulatora **MaSzyna**, w szczególności dla **MaSzyna Reloaded** (wersja na silniku Godot).
@@ -54,7 +54,7 @@ godot --headless --path . --export-release "Linux"   build/linux/GeoStudio.x86_6
 
 ## Prace w toku – kolejne kroki
 
-- **Cała sekcja metadanych** (`docs/MODEL_META.md`, blok `model_meta`, dane per część, odczyt po stronie symulatora) wymaga jeszcze przepracowania i dokończenia.
+- **Metadane:** eksporter domyślnie zapisuje profil MaSzyna Reloaded (`docs/MODEL_META.md`), razem z efektami cząstek (`particle_fx`) i deszczem (`weather_source`) jako naszym rozszerzeniem; trzeba to jeszcze uzgodnić z zespołem Reloaded i sprawdzić w symulatorze.
 - **Wycinanki na panelu** (płótno sektorów) pod kątem elementów udających świecenie – podświetlone okna, lampy, powierzchnie `light_on` – wymagają dopracowania: sposób wycinania, oznaczania i eksportu do T3D (obecnie neutralne `light_on00` bez maski).
 
 ## Status – co jest, a czego nie sprawdzono

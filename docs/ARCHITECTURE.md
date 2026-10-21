@@ -26,8 +26,11 @@ główna scena tworzy je w `_ready()`. Ustawienia są opisane jednym schematem (
 | `edge_overlay.gd` | `EdgeOverlay` | nakładka krawędzi i wierzchołków („Edged Faces”): geometria w przestrzeni ekranu, dwa przebiegi (widoczne / zasłonięte) |
 | `export_flow.gd`, `model_exporter.gd`, `model_meta.gd` | | eksport GLB / glTF i metadane |
 | `t3d_exporter.gd` | `T3dExporter` | eksport T3D dla MaSzyny: submodele, LOD-y, TGA, `.mat`, `.inc`, nodebank |
-| `emitter_flow.gd` | `EmitterFlow` | emitery (światło, dźwięk, dym) i kanały: dane w ustawieniach, znaczniki 3D, eksport metadanych (szkic v2) |
-| `emitter_page.gd` | `EmitterPage` | karta „Emitery”: dodawanie i edycja emiterów i kanałów |
+| `emitter_flow.gd` | `EmitterFlow` | emitery (światło, cząstki, deszcz, dźwięk) i kanały: dane w ustawieniach, podgląd i znaczniki 3D, węzły eksportu |
+| `emitter_page.gd` | `EmitterPage` | karta „Emitery”: dodawanie i edycja emiterów (wygląd, warstwy, światło, deszcz) i kanałów |
+| `profile_export.gd` | `ProfileExport` | profil metadanych eksportu (MODEL_META.md): `asset.extras`, `osm`, `geo`, `semantic_id`, autorstwo |
+| `fx_particles.gd`, `fx_tex.gd`, `fx_flicker.gd` | `FxParticles`, `FxTex`, `FxFlicker` | silnik efektów: warstwy cząstek GPU, proceduralne arkusze sprite'ów, migoczące światło; opis `particle_fx` |
+| `fx_rain.gd` | `FxRain` | deszcz liczony z geometrii dachu: smugi, rozbryzgi, spływ (shader), okapy, kręgi; opis `weather_source` |
 | `mgdot.gd` | `MgDot` | format `.mgdot`: pakowanie (atomowe), rozpakowanie, manifest, kontrola wersji |
 | `project_flow.gd`, `project_store.gd`, `project_dialog.gd` | | folder projektu, zapis/odczyt stanu, okno startowe, zapis i otwieranie `.mgdot` |
 | `geoportal_client.gd`, `geo_cache.gd`, `place_search.gd`, `place_history.gd` | | Geoportal (WMS/WFS, EPSG:2180), cache, wyszukiwarka miejsc |
@@ -65,8 +68,11 @@ the main scene creates them in `_ready()`. All settings are described by one sch
 | `edge_overlay.gd` | `EdgeOverlay` | edge and vertex overlay ("Edged Faces"): screen-space geometry, two passes (visible / hidden) |
 | `export_flow.gd`, `model_exporter.gd`, `model_meta.gd` | | GLB / glTF export and metadata |
 | `t3d_exporter.gd` | `T3dExporter` | T3D export for MaSzyna: submodels, LODs, TGA, `.mat`, `.inc`, nodebank |
-| `emitter_flow.gd` | `EmitterFlow` | emitters (light, audio, smoke) and channels: data in settings, 3D markers, metadata export (draft v2) |
-| `emitter_page.gd` | `EmitterPage` | the "Emitery" tab: add and edit emitters and channels |
+| `emitter_flow.gd` | `EmitterFlow` | emitters (light, particles, rain, audio) and channels: data in settings, 3D preview and markers, export nodes |
+| `emitter_page.gd` | `EmitterPage` | the "Emitery" tab: add and edit emitters (look, layers, light, rain) and channels |
+| `profile_export.gd` | `ProfileExport` | the export metadata profile (MODEL_META.md): `asset.extras`, `osm`, `geo`, `semantic_id`, credits |
+| `fx_particles.gd`, `fx_tex.gd`, `fx_flicker.gd` | `FxParticles`, `FxTex`, `FxFlicker` | effects engine: GPU particle layers, procedural sprite sheets, flickering light; the `particle_fx` description |
+| `fx_rain.gd` | `FxRain` | rain derived from the roof geometry: streaks, splashes, runoff (shader), eaves, ripples; the `weather_source` description |
 | `mgdot.gd` | `MgDot` | the `.mgdot` format: (atomic) packing, unpacking, manifest, version check |
 | `project_flow.gd`, `project_store.gd`, `project_dialog.gd` | | project folder, state save/load, start window, saving and opening `.mgdot` |
 | `geoportal_client.gd`, `geo_cache.gd`, `place_search.gd`, `place_history.gd` | | Geoportal (WMS/WFS, EPSG:2180), cache, place search |
