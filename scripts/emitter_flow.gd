@@ -1,27 +1,52 @@
 class_name EmitterFlow
 extends RefCounted
-## Emitters: places on the model that give off light, sound or smoke (draft contract: docs/MODEL_META.md, "v2").
-## They are DATA only - nothing is cut out of the mesh. Stored as JSON in the hidden settings `model_emitters` and
-## `model_channels` (so they travel with the project). In the 3D view they show as small markers (node "EmitterGizmos",
-## a sibling of the building, so the exporters never see it).
+## Emitters: everything the model can give off optically or acoustically - light, particles (smoke, fire, water, steam)
+## and audio (wind is left out on purpose). Contract: docs/MODEL_META.md.
+## They are DATA in the project (hidden settings `model_emitters` / `model_channels`, so they travel with the .mgdot);
+## nothing is cut out of the mesh. In the 3D view they show as small markers (node "EmitterGizmos", a sibling of the building,
+## so the exporters never see it). The glTF export turns them into nodes (see build_export_nodes).
 ##
 ## One emitter: {id, kind, channel, part, wall (0-based footprint edge), rect [u, v, w, h] (m; light_surface only),
 ##               pos [x, y, z] (m, building coordinates), yaw, pitch, cone (deg), range (m), colour "#rrggbb", strength,
-##               chimney (1-based, smoke only)}
+##               chimney (0 = free position, 1.. = on top of that chimney; particles), ps {particle parameters}}
 ## One channel: {id, type "switch"|"level", default (0..1), ramp_up, ramp_down (s)}
 
 const KEY := "model_emitters"
 const KEY_CH := "model_channels"
+const QUAD_OFFSET := 0.04     # the light quad stands this far in front of the wall, m
 
-## [kind id, button label, group] - group: light | audio | smoke (also the `kind` of the exported emitter)
+## [kind id, button label, group] - group: light | particle | audio
 const KINDS := [
 	["light_surface", "Światło – powierzchnia (okno, szyld)", "light"],
 	["light_point", "Światło – punktowe (żarówka)", "light"],
 	["light_spot", "Światło – reflektor (latarnia)", "light"],
+	["particle_smoke", "Cząstki – dym", "particle"],
+	["particle_fire", "Cząstki – ogień", "particle"],
+	["particle_water", "Cząstki – woda (fontanna, strumień)", "particle"],
+	["particle_steam", "Cząstki – para", "particle"],
 	["audio_omni", "Dźwięk – dookólny", "audio"],
 	["audio_dir", "Dźwięk – kierunkowy", "audio"],
-	["smoke", "Dym – komin", "smoke"],
 ]
+
+## Starting values of the particle presets (docs/MODEL_META.md, 4.3). Not verified in the simulator.
+const PRESETS := {
+	"smoke": {"rate": 8.0, "max_particles": 60, "lifetime": [3.0, 6.0], "speed": [0.4, 0.9], "size": [0.2, 0.5], "cone_angle": 0.25,
+		"growth": 0.15, "acceleration": [0.0, 0.15, 0.0], "drag": 0.3, "inherit_velocity": 0.0},
+	"fire": {"rate": 40.0, "max_particles": 120, "lifetime": [0.4, 0.9], "speed": [0.8, 1.6], "size": [0.15, 0.35], "cone_angle": 0.2,
+		"growth": -0.2, "acceleration": [0.0, 1.5, 0.0], "drag": 0.5, "inherit_velocity": 0.0},
+	"water": {"rate": 120.0, "max_particles": 400, "lifetime": [1.2, 1.8], "speed": [5.0, 7.0], "size": [0.04, 0.08], "cone_angle": 0.12,
+		"growth": 0.0, "acceleration": [0.0, -9.81, 0.0], "drag": 0.05, "inherit_velocity": 0.0},
+	"steam": {"rate": 15.0, "max_particles": 80, "lifetime": [1.5, 3.0], "speed": [0.8, 1.4], "size": [0.15, 0.35], "cone_angle": 0.35,
+		"growth": 0.25, "acceleration": [0.0, 0.4, 0.0], "drag": 0.8, "inherit_velocity": 0.0},
+}
+
+## The material every particle preset points to (`material` is required by the format): [base colour rgba, emissive rgb or null]
+const PARTICLE_MATERIALS := {
+	"smoke": [[0.55, 0.55, 0.55, 0.5], null],
+	"fire": [[1.0, 0.55, 0.15, 0.8], [1.0, 0.45, 0.1]],
+	"water": [[0.7, 0.85, 1.0, 0.6], null],
+	"steam": [[0.95, 0.95, 0.95, 0.35], null],
+}
 
 var app
 
@@ -46,8 +71,31 @@ static func kind_group(kind: String) -> String:
 	return "light"
 
 
+## "particle_fire" -> "fire"; "" for other kinds.
+static func preset_of(kind: String) -> String:
+	return kind.trim_prefix("particle_") if kind.begins_with("particle_") else ""
+
+
+static func _merge_ps(preset: String, given: Variant) -> Dictionary:
+	var out: Dictionary = (PRESETS[preset] as Dictionary).duplicate(true)
+	if typeof(given) == TYPE_DICTIONARY:
+		for k in out.keys():
+			if (given as Dictionary).has(k):
+				var v = (given as Dictionary)[k]
+				if typeof(out[k]) == TYPE_ARRAY and typeof(v) == TYPE_ARRAY and (v as Array).size() == (out[k] as Array).size():
+					var arr: Array = []
+					for x in v:
+						arr.append(float(x))
+					out[k] = arr
+				elif typeof(out[k]) != TYPE_ARRAY and (typeof(v) == TYPE_FLOAT or typeof(v) == TYPE_INT):
+					out[k] = float(v) if k != "max_particles" else int(v)
+	return out
+
+
 static func normalize(e: Dictionary) -> Dictionary:
 	var kind := str(e.get("kind", "light_point"))
+	if kind == "smoke":     # 3.0.2 name
+		kind = "particle_smoke"
 	var known := false
 	for k in KINDS:
 		if k[0] == kind:
@@ -60,16 +108,20 @@ static func normalize(e: Dictionary) -> Dictionary:
 	var p: Array = e.get("pos", [])
 	if p.size() != 3:
 		p = [0.0, 3.0, 0.0]
-	return {
+	var is_particle := kind.begins_with("particle_")
+	var out := {
 		"id": str(e.get("id", "E1")), "kind": kind, "channel": str(e.get("channel", "")),
 		"part": maxi(int(e.get("part", 0)), 0), "wall": maxi(int(e.get("wall", 0)), 0),
 		"rect": [float(r[0]), maxf(float(r[1]), 0.0), clampf(float(r[2]), 0.05, 50.0), clampf(float(r[3]), 0.05, 50.0)],
 		"pos": [float(p[0]), float(p[1]), float(p[2])],
-		"yaw": float(e.get("yaw", 0.0)), "pitch": clampf(float(e.get("pitch", -90.0 if kind == "light_spot" else 0.0)), -90.0, 90.0),
+		"yaw": float(e.get("yaw", 0.0)), "pitch": clampf(float(e.get("pitch", (90.0 if is_particle else (-90.0 if kind == "light_spot" else 0.0)))), -90.0, 90.0),
 		"cone": clampf(float(e.get("cone", 60.0)), 1.0, 360.0), "range": clampf(float(e.get("range", 10.0)), 0.1, 1000.0),
 		"colour": str(e.get("colour", "#ffd9a0")), "strength": clampf(float(e.get("strength", 1.0)), 0.0, 100.0),
-		"chimney": maxi(int(e.get("chimney", 1)), 1),
+		"chimney": maxi(int(e.get("chimney", 1 if kind == "particle_smoke" else 0)), 0),
 	}
+	if is_particle:
+		out["ps"] = _merge_ps(preset_of(kind), e.get("ps", null))
+	return out
 
 
 static func normalize_channel(c: Dictionary) -> Dictionary:
@@ -141,8 +193,11 @@ func next_id(kind: String, arr: Array) -> String:
 		"light_surface": base = "okno"
 		"light_point": base = "swiatlo"
 		"light_spot": base = "lampa"
+		"particle_smoke": base = "dym"
+		"particle_fire": base = "ogien"
+		"particle_water": base = "woda"
+		"particle_steam": base = "para"
 		"audio_omni", "audio_dir": base = "dzwiek"
-		"smoke": base = "dym"
 	var n := 1
 	while true:
 		var cand := "%s%d" % [base, n]
@@ -180,25 +235,32 @@ func default_emitter(kind: String) -> Dictionary:
 	e["pos"] = [spot.x, minf(2.2, maxf(wall_h - 0.4, 0.5)), spot.y]
 	match kind:
 		"light_surface":
-			e["channel"] = "swiatla"
+			e["channel"] = "building.lights"
 			e["rect"] = [0.6, minf(1.0, maxf(wall_h - 1.4, 0.2)), 1.0, 1.2]
 		"light_point":
-			e["channel"] = "swiatla"
+			e["channel"] = "building.lights"
 			e["range"] = 8.0
 		"light_spot":
-			e["channel"] = "latarnia"
+			e["channel"] = "building.lamp"
 			e["pos"] = [spot.x, wall_h + 0.5, spot.y]
 			e["range"] = 15.0
 			e["cone"] = 70.0
 			e["pitch"] = -90.0
+		"particle_smoke":
+			e["channel"] = "building.smoke"
+			e["chimney"] = 1 if not app.chimneys.list().is_empty() else 0
+		"particle_fire":
+			e["channel"] = "building.fire"
+		"particle_water":
+			e["channel"] = "building.water"
+			e["pitch"] = 75.0
+		"particle_steam":
+			e["channel"] = "building.steam"
 		"audio_omni":
 			e["range"] = 30.0
 		"audio_dir":
 			e["range"] = 40.0
 			e["cone"] = 90.0
-		"smoke":
-			e["channel"] = "dym"
-			e["strength"] = 1.0
 	return e
 
 
@@ -238,69 +300,242 @@ func wall_frame(part: int, wall: int) -> Dictionary:
 	return {"a": a, "d": d, "n": n, "len": len}
 
 
-# ---------------------------------------------------------------------------------------------- export (draft v2 meta)
-
-static func _r(v: float) -> float:
-	return snappedf(v, 0.001)
-
-
-## Emitters for the metadata (docs/MODEL_META.md, draft v2). `surface` is the provisional face id "p<part>:w<wall>".
-func export_list() -> Array:
-	var out: Array = []
-	for e in list():
-		var kind := str(e["kind"])
-		var o := {"id": str(e["id"])}
-		match kind:
-			"light_surface":
-				var fr := wall_frame(int(e["part"]), int(e["wall"]))
-				o["kind"] = "light"
-				o["shape"] = "surface"
-				o["surface"] = "p%d:w%d" % [int(e["part"]), int(e["wall"])]
-				o["rect"] = [_r(e["rect"][0]), _r(e["rect"][1]), _r(e["rect"][2]), _r(e["rect"][3])]
-				if not fr.is_empty():
-					o["surface_size"] = [_r(float(fr["len"])), 0.0]
-			"light_point", "light_spot":
-				o["kind"] = "light"
-				o["shape"] = "point" if kind == "light_point" else "spot"
-				o["position"] = [_r(e["pos"][0]), _r(e["pos"][1]), _r(e["pos"][2])]
-				o["range_m"] = _r(float(e["range"]))
-				if kind == "light_spot":
-					o["direction"] = _dir_vec(float(e["yaw"]), float(e["pitch"]))
-					o["cone_deg"] = _r(float(e["cone"]))
-			"audio_omni", "audio_dir":
-				o["kind"] = "audio"
-				o["pattern"] = "omni" if kind == "audio_omni" else "directional"
-				o["position"] = [_r(e["pos"][0]), _r(e["pos"][1]), _r(e["pos"][2])]
-				o["range_m"] = _r(float(e["range"]))
-				if kind == "audio_dir":
-					o["direction"] = _dir_vec(float(e["yaw"]), float(e["pitch"]))
-					o["cone_deg"] = _r(float(e["cone"]))
-			"smoke":
-				o["kind"] = "smoke"
-				o["chimney_id"] = int(e["chimney"])
-		if kind_group(kind) == "light":
-			o["colour"] = str(e["colour"])
-		if kind_group(kind) != "audio":
-			o["strength"] = _r(float(e["strength"]))
-		if str(e["channel"]) != "":
-			o["channel"] = str(e["channel"])
-		out.append(o)
-	return out
-
-
-func channel_export_list() -> Array:
-	var out: Array = []
-	for c in channels():
-		out.append({"id": c["id"], "type": c["type"], "default": _r(float(c["default"])),
-			"ramp_up": _r(float(c["ramp_up"])), "ramp_down": _r(float(c["ramp_down"]))})
-	return out
-
-
-## Unit vector (x, y, z) for an azimuth (0 = +Z, clockwise seen from above) and pitch (0 = horizontal, -90 = down).
-static func _dir_vec(yaw_deg: float, pitch_deg: float) -> Array:
+## Unit direction for an azimuth (0 = +Z, clockwise seen from above) and pitch (0 = horizontal, +90 = up).
+static func dir_of(yaw_deg: float, pitch_deg: float) -> Vector3:
 	var y := deg_to_rad(yaw_deg)
 	var p := deg_to_rad(pitch_deg)
-	return [_r(sin(y) * cos(p)), _r(sin(p)), _r(cos(y) * cos(p))]
+	return Vector3(sin(y) * cos(p), sin(p), cos(y) * cos(p)).normalized()
+
+
+## Where the emitter stands: its own position, or (particles with a chimney) the top of that chimney.
+func position_of(e: Dictionary) -> Vector3:
+	if str(e["kind"]).begins_with("particle_") and int(e["chimney"]) > 0:
+		var arr: Array = app.chimneys.list()
+		var idx := int(e["chimney"]) - 1
+		if idx < arr.size():
+			var ch: Dictionary = arr[idx]
+			return Vector3(float(ch["x"]), app.chimneys.top_y(ch) + 0.05, float(ch["z"]))
+	return Vector3(float(e["pos"][0]), float(e["pos"][1]), float(e["pos"][2]))
+
+
+# ---------------------------------------------------------------------------------------------- glTF export
+
+## Light-layer id of every channel that drives a surface light ("building.lights" when none is named) - one id per
+## channel, sorted, so the ids are stable. `legacy_lit`: the old "Świeci" surfaces count as the default channel.
+func light_ids(legacy_lit := false) -> Dictionary:
+	var names := {}
+	for e in list():
+		if str(e["kind"]) == "light_surface":
+			names[_chan(e)] = true
+	if legacy_lit:
+		names["building.lights"] = true
+	var keys: Array = names.keys()
+	keys.sort()
+	var out := {}
+	for i in range(keys.size()):
+		out[str(keys[i])] = i
+	return out
+
+
+static func _chan(e: Dictionary) -> String:
+	var c := str(e.get("channel", "")).strip_edges()
+	return c if c != "" else "building.lights"
+
+
+func channel_default(name: String) -> float:
+	for c in channels():
+		if str(c["id"]) == name:
+			return float(c["default"])
+	return 0.0
+
+
+static func _lin(c: Color) -> Array:
+	var l := c.srgb_to_linear()
+	return [snappedf(l.r, 0.0001), snappedf(l.g, 0.0001), snappedf(l.b, 0.0001)]
+
+
+static func _basis_y_to(dir: Vector3) -> Basis:
+	if dir.is_equal_approx(Vector3.UP):
+		return Basis.IDENTITY
+	return Basis(Quaternion(Vector3.UP, dir))
+
+
+static func _basis_look(dir: Vector3) -> Basis:
+	var up_ref := Vector3.UP if absf(dir.y) < 0.99 else Vector3.RIGHT
+	return Basis.looking_at(dir, up_ref)
+
+
+## Builds the glTF nodes of all emitters. Returns {nodes: [Node3D], materials: [dict], light_fix: {semantic_id: {...}},
+## used_particle_materials: [names]}. The nodes are NOT in the scene tree; the exporter adopts them.
+## ids: light layer ids (light_ids()).
+func build_export_nodes(ids: Dictionary) -> Dictionary:
+	var nodes: Array = []
+	var materials: Array = []
+	var light_fix := {}
+	var used_ps := {}
+	for e in list():
+		var kind := str(e["kind"])
+		var sid := "emitter." + str(e["id"])
+		match kind:
+			"light_surface":
+				var n := _surface_light_node(e, sid, ids)
+				if n != null:
+					nodes.append(n)
+			"light_point", "light_spot":
+				var ln := _punctual_node(e, sid, light_fix)
+				nodes.append(ln)
+			"audio_omni", "audio_dir":
+				nodes.append(_audio_node(e, sid))
+			_:
+				if kind.begins_with("particle_"):
+					var pn := _particle_node(e, sid)
+					nodes.append(pn)
+					used_ps[preset_of(kind)] = true
+	for pname in used_ps.keys():
+		var spec: Array = PARTICLE_MATERIALS[pname]
+		var bc: Array = spec[0]
+		var m := {"name": "smoke_source_" + str(pname),
+			"pbrMetallicRoughness": {"baseColorFactor": bc, "metallicFactor": 0.0, "roughnessFactor": 1.0},
+			"alphaMode": "BLEND", "doubleSided": true, "extras": {"semantic_id": "material." + str(pname)}}
+		if spec[1] != null:
+			m["emissiveFactor"] = spec[1]
+		materials.append(m)
+	return {"nodes": nodes, "materials": materials, "light_fix": light_fix}
+
+
+func _surface_light_node(e: Dictionary, sid: String, ids: Dictionary) -> Node3D:
+	var fr := wall_frame(int(e["part"]), int(e["wall"]))
+	if fr.is_empty():
+		return null
+	var r: Array = e["rect"]
+	var a: Vector2 = fr["a"]
+	var d: Vector2 = fr["d"]
+	var nn: Vector2 = fr["n"]
+	var p0 := a + d * float(r[0]) + nn * QUAD_OFFSET
+	var p1 := p0 + d * float(r[2])
+	var y0 := float(r[1])
+	var y1 := y0 + float(r[3])
+	var n3 := Vector3(nn.x, 0.0, nn.y)
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var corners := [Vector3(p0.x, y0, p0.y), Vector3(p1.x, y0, p1.y), Vector3(p1.x, y1, p1.y), Vector3(p0.x, y1, p0.y)]
+	var uvs := [Vector2(0, 1), Vector2(1, 1), Vector2(1, 0), Vector2(0, 0)]
+	for i in [0, 1, 2, 0, 2, 3]:
+		st.set_normal(n3)
+		st.set_uv(uvs[i])
+		st.add_vertex(corners[i])
+	var mesh := st.commit()
+	var mat := StandardMaterial3D.new()
+	var col := Color(str(e["colour"]))
+	mat.albedo_color = Color(0.05, 0.05, 0.05)
+	mat.emission_enabled = true
+	mat.emission = col
+	mat.emission_energy_multiplier = float(e["strength"])
+	mat.cull_mode = BaseMaterial3D.CULL_DISABLED
+	mat.resource_name = "light_" + str(e["id"])
+	mesh.surface_set_material(0, mat)
+	var node := MeshInstance3D.new()
+	node.name = "light_" + str(e["id"])
+	node.mesh = mesh
+	var chan := _chan(e)
+	node.set_meta("gltf_extras", {
+		"semantic_id": sid,
+		"light_id": int(ids.get(chan, 0)),
+		"light_color": _lin(col),
+		"light_state": "on",
+		"geostudio": {"kind": "light_surface", "channel": chan,
+			"surface": "building.part_%d.wall_%d" % [int(e["part"]), int(e["wall"])], "rect": r.duplicate()},
+	})
+	return node
+
+
+func _punctual_node(e: Dictionary, sid: String, light_fix: Dictionary) -> Node3D:
+	var kind := str(e["kind"])
+	var col := Color(str(e["colour"]))
+	var intensity := float(e["strength"]) * 100.0      # candela; starting value, to be tuned in the simulator
+	var node: Light3D
+	if kind == "light_spot":
+		var sp := SpotLight3D.new()
+		var outer := deg_to_rad(float(e["cone"]) * 0.5)
+		sp.spot_angle = float(e["cone"]) * 0.5
+		sp.spot_range = float(e["range"])
+		node = sp
+		light_fix[sid] = {"intensity": intensity, "inner": outer * 0.8, "outer": outer}
+		node.basis = _basis_look(dir_of(float(e["yaw"]), float(e["pitch"])))
+	else:
+		var om := OmniLight3D.new()
+		om.omni_range = float(e["range"])
+		node = om
+		light_fix[sid] = {"intensity": intensity}
+	node.name = "light_" + str(e["id"])
+	node.light_color = col
+	node.light_energy = intensity
+	node.position = position_of(e)
+	var extras := {"semantic_id": sid, "geostudio": {"kind": kind}}
+	var chan := str(e["channel"]).strip_edges()
+	if chan != "":
+		extras["light_control"] = {"source": chan, "default": channel_default(chan)}
+	node.set_meta("gltf_extras", extras)
+	return node
+
+
+func _particle_node(e: Dictionary, sid: String) -> Node3D:
+	var ps: Dictionary = e["ps"]
+	var preset := preset_of(str(e["kind"]))
+	var src := {
+		"rate": float(ps["rate"]), "max_particles": int(ps["max_particles"]),
+		"lifetime": ps["lifetime"], "speed": ps["speed"], "size": ps["size"],
+		"material": "material." + preset,
+		"cone_angle": float(ps["cone_angle"]), "growth": float(ps["growth"]),
+		"acceleration": ps["acceleration"], "drag": float(ps["drag"]), "inherit_velocity": float(ps["inherit_velocity"]),
+	}
+	var chan := str(e["channel"]).strip_edges()
+	if chan != "":
+		src["source"] = chan
+		src["default"] = maxf(channel_default(chan), 0.0)
+	var node := Node3D.new()
+	node.name = "particles_" + str(e["id"])
+	node.position = position_of(e)
+	node.basis = _basis_y_to(dir_of(float(e["yaw"]), float(e["pitch"])))    # the stream leaves along the node's +Y
+	node.set_meta("gltf_extras", {"semantic_id": sid, "smoke_source": src,
+		"geostudio": {"kind": str(e["kind"]), "preset": preset, "emission_axis": "+Y"}})
+	return node
+
+
+func _audio_node(e: Dictionary, sid: String) -> Node3D:
+	var kind := str(e["kind"])
+	var src := {"pattern": "omni" if kind == "audio_omni" else "directional", "range": float(e["range"]),
+		"trigger": sid + ".trigger", "clip": sid + ".clip"}
+	var node := Node3D.new()
+	node.name = "audio_" + str(e["id"])
+	node.position = position_of(e)
+	if kind == "audio_dir":
+		var outer := deg_to_rad(float(e["cone"]) * 0.5)
+		src["cone"] = {"inner": snappedf(outer * 0.8, 0.0001), "outer": snappedf(outer, 0.0001)}
+		node.basis = _basis_look(dir_of(float(e["yaw"]), float(e["pitch"])))    # the sound leaves along -Z, like a spot light
+	var chan := str(e["channel"]).strip_edges()
+	if chan != "":
+		src["source"] = chan
+		src["default"] = 1.0
+	node.set_meta("gltf_extras", {"semantic_id": sid, "audio_source": src, "geostudio": {"kind": kind}})
+	return node
+
+
+## Channels with the light-layer id they drive (for geostudio.channels in the export).
+func channel_export_list(ids: Dictionary) -> Array:
+	var out: Array = []
+	var have := {}
+	for c in channels():
+		var o := {"id": c["id"], "type": c["type"], "default": snappedf(float(c["default"]), 0.001),
+			"ramp_up": snappedf(float(c["ramp_up"]), 0.001), "ramp_down": snappedf(float(c["ramp_down"]), 0.001)}
+		if ids.has(str(c["id"])):
+			o["light_id"] = int(ids[str(c["id"])])
+		have[str(c["id"])] = true
+		out.append(o)
+	for k in ids.keys():     # a light-layer channel nobody declared (e.g. the default one)
+		if not have.has(k):
+			out.append({"id": k, "type": "switch", "default": 0.0, "ramp_up": 0.0, "ramp_down": 0.0, "light_id": int(ids[k])})
+	return out
 
 
 # ---------------------------------------------------------------------------------------------- markers in the 3D view
@@ -339,12 +574,20 @@ static func _mat(col: Color, alpha := 0.85) -> StandardMaterial3D:
 func _gizmo(e: Dictionary) -> Node3D:
 	var kind := str(e["kind"])
 	var group := kind_group(kind)
-	var col := Color(str(e["colour"])) if group == "light" else (Color("#52a9ff") if group == "audio" else Color("#b9c2cc"))
+	var col := Color(str(e["colour"]))
+	if group == "audio":
+		col = Color("#52a9ff")
+	elif group == "particle":
+		match preset_of(kind):
+			"smoke": col = Color("#b9c2cc")
+			"fire": col = Color("#ff7a30")
+			"water": col = Color("#4aa8ff")
+			"steam": col = Color("#e8eef5")
 	var holder := Node3D.new()
 	holder.name = "Emitter_" + str(e["id"])
 	var mi := MeshInstance3D.new()
 	holder.add_child(mi)
-	var pos := Vector3(float(e["pos"][0]), float(e["pos"][1]), float(e["pos"][2]))
+	var pos := position_of(e)
 	match kind:
 		"light_surface":
 			var fr := wall_frame(int(e["part"]), int(e["wall"]))
@@ -368,32 +611,19 @@ func _gizmo(e: Dictionary) -> Node3D:
 			sm.height = 0.4
 			mi.mesh = sm
 			holder.position = pos
-		"light_spot", "audio_dir":
+		_:
+			# spot / directional audio / particles: a cone whose tip sits at the emitter and whose open end points along the beam
 			var cm := CylinderMesh.new()
 			cm.top_radius = 0.0
 			cm.bottom_radius = 0.25
 			cm.height = 0.7
 			mi.mesh = cm
-			mi.position = Vector3(0, -0.35, 0)    # the tip (+Y of the mesh) sits at the emitter, the open end (-Y) points along the beam
+			mi.position = Vector3(0, -0.35, 0)
 			holder.position = pos
-			var dv := _dir_vec(float(e["yaw"]), float(e["pitch"]))
-			var dir := Vector3(dv[0], dv[1], dv[2]).normalized()
-			# the cone's axis is +Y with the tip at +Y; turn -Y (the open end) into the beam direction
+			var dir := dir_of(float(e["yaw"]), float(e["pitch"]))
 			var up_ref := Vector3.UP if absf(dir.y) < 0.99 else Vector3.RIGHT
 			var zax := dir.cross(up_ref).normalized()
 			var xax := dir.cross(zax).normalized()
 			holder.basis = Basis(xax, -dir, -zax)
-		"smoke":
-			var idx := int(e["chimney"]) - 1
-			var arr: Array = app.chimneys.list()
-			if idx < 0 or idx >= arr.size():
-				return null
-			var ch: Dictionary = arr[idx]
-			var cyl := CylinderMesh.new()
-			cyl.top_radius = 0.35
-			cyl.bottom_radius = 0.12
-			cyl.height = 1.2
-			mi.mesh = cyl
-			holder.position = Vector3(float(ch["x"]), app.chimneys.top_y(ch) + 0.7, float(ch["z"]))
 	mi.material_override = _mat(col)
 	return holder

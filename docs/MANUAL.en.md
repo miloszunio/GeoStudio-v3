@@ -2,7 +2,7 @@
 
 *Wersja polska: [PODRECZNIK.pl.md](PODRECZNIK.pl.md)*
 
-Program version: **3.0.2** (Godot 4.6). This manual covers the whole path "building from the map → 3D model → texture from ChatGPT →
+Program version: **3.0.3** (Godot 4.6). This manual covers the whole path "building from the map → 3D model → texture from ChatGPT →
 roof → chimneys → export (GLB / glTF / T3D) → `.mgdot` project file" and what to check while testing.
 **Note:** the program interface is in Polish; button and section names are quoted in Polish with a translation in brackets where it helps.
 

@@ -59,7 +59,7 @@ godot --headless --path . --export-release "Linux"   build/linux/GeoStudio.x86_6
 
 ## Status – co jest, a czego nie sprawdzono
 
-Działający prototyp (3.0.2). **Nie sprawdzono**: eksportu T3D w samym symulatorze MaSzyna (format odtworzono z paczki przykładowej i kontroli automatycznych), importu GLB/glTF w Blenderze i innych silnikach,
+Działający prototyp (3.0.3). **Nie sprawdzono**: eksportu T3D w samym symulatorze MaSzyna (format odtworzono z paczki przykładowej i kontroli automatycznych), importu GLB/glTF w Blenderze i innych silnikach,
 pracy na Windows (ścieżki), żywych usług Geoportalu i Nominatim (rozwijane na atrapie serwera). Dach to uproszczony model, nie LoD2; okna i drzwi nie są osobną geometrią;
 ChatGPT nie gwarantuje liczby okien ani rozmiaru obrazu. Pełna lista: [podręcznik, rozdz. 13](docs/PODRECZNIK.pl.md).
 

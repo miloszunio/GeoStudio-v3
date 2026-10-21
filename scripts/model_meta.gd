@@ -54,7 +54,7 @@ static func building(info: Dictionary) -> Dictionary:
 			m["part_roofs"] = roofs
 	if str(info.get("colour", "")) != "":
 		m["colour"] = info["colour"]
-	for k in ["chimneys", "emitters", "channels"]:
+	for k in ["chimneys"]:
 		if not (info.get(k, []) as Array).is_empty():
 			m[k] = info[k]
 	if info.get("placement", null) != null:

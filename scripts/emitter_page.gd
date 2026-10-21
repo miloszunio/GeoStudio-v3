@@ -23,10 +23,29 @@ const POS_ROWS := [
 	["pos.1", "Wysokość Y", "float", -50.0, 200.0, 0.1, " m"],
 	["pos.2", "Położenie Z", "float", -500.0, 500.0, 0.1, " m"],
 ]
+const AIM_ROWS := [
+	["yaw", "Azymut", "float", -360.0, 360.0, 1.0, "°"],
+	["pitch", "Nachylenie (+90 = w górę, −90 = w dół)", "float", -90.0, 90.0, 1.0, "°"],
+]
 const DIR_ROWS := [
 	["yaw", "Azymut", "float", -360.0, 360.0, 1.0, "°"],
-	["pitch", "Nachylenie (−90 = w dół)", "float", -90.0, 90.0, 1.0, "°"],
+	["pitch", "Nachylenie (+90 = w górę, −90 = w dół)", "float", -90.0, 90.0, 1.0, "°"],
 	["cone", "Kąt stożka", "float", 1.0, 360.0, 1.0, "°"],
+]
+const PARTICLE_ROWS := [
+	["chimney", "Na kominie nr (0 = wolna pozycja)", "int", 0, 50, 1, ""],
+	["ps.rate", "Cząstek na sekundę", "float", 0.0, 2000.0, 1.0, ""],
+	["ps.max_particles", "Maks. cząstek", "int", 1, 5000, 10, ""],
+	["ps.lifetime.0", "Czas życia, min", "float", 0.05, 120.0, 0.1, " s"],
+	["ps.lifetime.1", "Czas życia, maks", "float", 0.05, 120.0, 0.1, " s"],
+	["ps.speed.0", "Prędkość, min", "float", 0.0, 100.0, 0.1, " m/s"],
+	["ps.speed.1", "Prędkość, maks", "float", 0.0, 100.0, 0.1, " m/s"],
+	["ps.size.0", "Rozmiar, min", "float", 0.0, 20.0, 0.01, " m"],
+	["ps.size.1", "Rozmiar, maks", "float", 0.0, 20.0, 0.01, " m"],
+	["ps.cone_angle", "Półkąt stożka", "float", 0.0, 3.14, 0.01, " rad"],
+	["ps.growth", "Przyrost rozmiaru", "float", -5.0, 5.0, 0.05, " m/s"],
+	["ps.acceleration.1", "Przyspieszenie w pionie (−9,81 = grawitacja)", "float", -50.0, 50.0, 0.05, " m/s²"],
+	["ps.drag", "Opór", "float", 0.0, 20.0, 0.05, " 1/s"],
 ]
 
 
@@ -212,8 +231,8 @@ func _row(i: int, e: Dictionary) -> Control:
 			rows = POS_ROWS + [["range", "Zasięg", "float", 0.1, 1000.0, 0.5, " m"]]
 		"audio_dir":
 			rows = POS_ROWS + DIR_ROWS + [["range", "Zasięg", "float", 0.1, 1000.0, 0.5, " m"]]
-		"smoke":
-			rows = [["chimney", "Komin nr (z generatora)", "int", 1, 50, 1, ""]]
+		"particle_smoke", "particle_fire", "particle_water", "particle_steam":
+			rows = [PARTICLE_ROWS[0]] + POS_ROWS + AIM_ROWS + PARTICLE_ROWS.slice(1)
 	for spec in rows:
 		_num_row(g, i, e, spec)
 	if EmitterFlow.kind_group(kind) == "light":
@@ -226,7 +245,7 @@ func _row(i: int, e: Dictionary) -> Control:
 		cp.custom_minimum_size = Vector2(80, 26)
 		cp.color_changed.connect(func(c: Color) -> void: _edit(i, "colour", "#" + c.to_html(false)))
 		g.add_child(cp)
-	if EmitterFlow.kind_group(kind) != "audio":
+	if EmitterFlow.kind_group(kind) == "light":
 		_num_row(g, i, e, ["strength", "Jasność / intensywność", "float", 0.0, 100.0, 0.1, ""])
 	return panel
 
@@ -274,11 +293,39 @@ func _num_row(g: GridContainer, i: int, e: Dictionary, spec: Array) -> void:
 	g.add_child(sp)
 
 
+## Reads a value by a dotted path ("rect.2", "ps.lifetime.0", "ps.rate").
 static func _num(e: Dictionary, key: String) -> float:
-	if key.contains("."):
-		var parts := key.split(".")
-		return float((e[parts[0]] as Array)[int(parts[1])])
-	return float(e.get(key, 0.0))
+	var cur: Variant = e
+	for part in key.split("."):
+		if typeof(cur) == TYPE_ARRAY:
+			cur = (cur as Array)[int(part)]
+		elif typeof(cur) == TYPE_DICTIONARY:
+			cur = (cur as Dictionary).get(part, 0.0)
+	return float(cur)
+
+
+## Writes a value by a dotted path; returns false when nothing changed.
+static func _set_path(e: Dictionary, key: String, value: Variant) -> bool:
+	var parts := key.split(".")
+	var cur: Variant = e
+	for i in range(parts.size() - 1):
+		var part := parts[i]
+		if typeof(cur) == TYPE_ARRAY:
+			cur = (cur as Array)[int(part)]
+		else:
+			cur = (cur as Dictionary)[part]
+	var last := parts[parts.size() - 1]
+	if typeof(cur) == TYPE_ARRAY:
+		var arr: Array = cur
+		if arr[int(last)] == value:
+			return false
+		arr[int(last)] = value
+	else:
+		var d: Dictionary = cur
+		if d.get(last) == value:
+			return false
+		d[last] = value
+	return true
 
 
 ## Writes one value into emitter i. `rebuild`: the row must be built again (e.g. the wall count depends on the part).
@@ -286,13 +333,8 @@ func _edit(i: int, key: String, value: Variant, rebuild := false) -> void:
 	var arr := flow.list()
 	if i >= arr.size():
 		return
-	if key.contains("."):
-		var parts := key.split(".")
-		(arr[i][parts[0]] as Array)[int(parts[1])] = value
-	else:
-		if arr[i].get(key) == value:
-			return
-		arr[i][key] = value
+	if not _set_path(arr[i], key, value):
+		return
 	_editing = true
 	flow.save(arr)
 	_editing = false

@@ -2,7 +2,7 @@
 
 *English version: [MANUAL.en.md](MANUAL.en.md)*
 
-Wersja programu: **3.0.2** (Godot 4.6). Dokument opisuje całą ścieżkę „budynek z mapy → model 3D → tekstura z ChatGPT →
+Wersja programu: **3.0.3** (Godot 4.6). Dokument opisuje całą ścieżkę „budynek z mapy → model 3D → tekstura z ChatGPT →
 dach → kominy → eksport (GLB / glTF / T3D) → plik projektu `.mgdot`” oraz to, co dokładnie sprawdzać podczas testów.
 
 ---

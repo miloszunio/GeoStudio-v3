@@ -2,7 +2,7 @@
 
 PL poniżej, angielskie streszczenie na końcu. / Polish below, an English summary at the end.
 
-**Status: szkic kontraktu docelowego – do przeglądu z zespołem MaSzyna Reloaded.** Eksporter 3.0.2 zapisuje jeszcze **wersję 1** ([MODEL_META_V1.md](MODEL_META_V1.md)); ten dokument opisuje, dokąd idziemy i w jakiej kolejności.
+**Status: kontrakt do przeglądu z zespołem MaSzyna Reloaded; od 3.0.3 eksporter zapisuje ten profil domyślnie** (`model_format_version`, `osm`, `geo`, `semantic_id`, warstwy świateł, `KHR_lights_punctual` + `light_control`, `smoke_source`, `audio_source`, `asset.extras.geostudio`, autorstwo). Dawny format v1 ([MODEL_META_V1.md](MODEL_META_V1.md)) można dopisać opcją „Eksport: dodaj stary układ metadanych (v1)”. *Status: from 3.0.3 the exporter writes this profile by default; v1 is available as an option.*
 
 ## 0. Czym jest ten dokument
 
@@ -28,7 +28,7 @@ Zasada nadrzędna: **model deklaruje, co ma i co może z siebie wypuścić, a ś
 
 | Pole | Wartość z GeoStudio | Skąd |
 |---|---|---|
-| `asset.generator` | `GeoStudio 3.0.2` | glTF |
+| `asset.generator` | `GeoStudio 3.0.3` | glTF |
 | `asset.copyright` | `© 2026 Autor, licencja SPDX` (np. `© 2026 Miłosz "pol102" Mindak, CC-BY-4.0`) | glTF, z ustawień „Autor” i „Domyślna licencja” |
 | `asset.extras.model_format_version` | `"0.4.0"` (tyle, ile obsługujemy) | **ich profil, wymagane** |
 | `asset.extras.osm` | tagi OSM budynku, tabela niżej | ich profil |

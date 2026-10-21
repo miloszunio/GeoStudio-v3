@@ -87,6 +87,7 @@ func _run() -> void:
 	root.add_child(main)
 	for _i in 6:
 		await process_frame
+	main.projflow._open_project(ProjectSettings.globalize_path("user://selftest_project0"))   # importing needs an open project
 
 	ok(main.current_ring.is_empty() and main.current_parts.is_empty(), "scene starts empty (no model)")
 	ok(not main.panel.is_tab_enabled("tex"), "texturing step is locked until a model exists")
@@ -520,13 +521,16 @@ func _run() -> void:
 	for gn in gnodes:
 		by_name[str(gn.get("name", ""))] = gn
 	var rootn: Dictionary = by_name.get("Building", {})
-	var rmeta: Dictionary = rootn.get("extras", {}).get("meta", {})
-	ok(int(rmeta.get("meta_version", 0)) == 1 and rmeta.get("model_type", "") == "building", "root node carries meta_version and model_type in extras")
-	ok(rmeta.has("height") and rmeta.has("roof_shape"), "root meta has height and roof_shape")
+	ok(str(rootn.get("extras", {}).get("semantic_id", "")) == "building", "root node has semantic_id building")
+	var gas: Dictionary = gj.get("asset", {}).get("extras", {})
+	ok(str(gas.get("model_format_version", "")) == "0.4.0" and gas.has("osm") and gas.has("geostudio"), "asset.extras carries model_format_version, osm and geostudio")
+	ok(str((gas.get("osm", {}) as Dictionary).get("building", "")) != "" and (gas.get("geostudio", {}) as Dictionary).has("credits"), "osm tags and credits present")
 	ok(by_name.has("walls_p0") and by_name.has("roof_p0"), "submodels walls_p0 / roof_p0 present")
+	ok(str(by_name.get("walls_p0", {}).get("extras", {}).get("semantic_id", "")) == "building.part_0.walls", "walls node has a stable semantic_id")
 	var litn: Dictionary = by_name.get("walls_p0_lit", {})
-	ok(litn.get("extras", {}).get("meta", {}).get("emissive_light", false) == true, "light-flagged face becomes a node with emissive_light = true")
-	ok(by_name.get("walls_p0", {}).get("extras", {}).get("meta", {}).get("emissive_light", false) == false, "ordinary walls are not emissive_light")
+	ok(litn.get("extras", {}).has("light_id") and str(litn.get("extras", {}).get("light_state", "")) == "on", "light-flagged face becomes a light layer (light_id, light_state)")
+	ok(not by_name.get("walls_p0", {}).get("extras", {}).has("light_id"), "ordinary walls are not a light layer")
+	ok(not rootn.get("extras", {}).has("meta"), "no v1 meta on the root by default")
 	ok(FileAccess.file_exists("user://selftest_export/model.meta.json"), "sidecar .meta.json written")
 	var gdoc := GLTFDocument.new()
 	var gstate := GLTFState.new()
@@ -895,24 +899,31 @@ func _emitter_checks(main: Control) -> void:
 	var chn := {}
 	for c in fl.channels():
 		chn[str(c["id"])] = true
-	ok(chn.has("swiatla") and chn.has("latarnia") and chn.has("dym"), "channels named by emitters were created (%s)" % ",".join(chn.keys()))
+	ok(chn.has("building.lights") and chn.has("building.lamp") and chn.has("building.smoke"), "channels named by emitters were created (%s)" % ",".join(chn.keys()))
 	var norm := EmitterFlow.normalize({"kind": "nonsense", "rect": [1, 2], "cone": 9999, "pitch": 500})
 	ok(str(norm["kind"]) == "light_point" and float(norm["cone"]) <= 360.0 and float(norm["pitch"]) <= 90.0, "normalize repairs unknown kind and out-of-range values")
-	var ex: Array = fl.export_list()
-	var by := {}
-	for o in ex:
-		by[str(o["id"])] = o
-	var surf: Dictionary = by.get("okno1", {})
-	ok(str(surf.get("kind")) == "light" and str(surf.get("shape")) == "surface" and (surf.get("rect", []) as Array).size() == 4 and str(surf.get("surface", "")).begins_with("p0:w"), "surface light exports kind/shape/rect/surface")
-	var spot: Dictionary = by.get("lampa1", {})
-	ok(str(spot.get("shape")) == "spot" and (spot.get("direction", []) as Array).size() == 3 and spot.has("cone_deg"), "spot light exports a direction and a cone")
-	var au: Dictionary = by.get("dzwiek1", {})
-	ok(str(au.get("kind")) == "audio" and str(au.get("pattern")) == "omni" and not au.has("clip"), "omni audio exports no clip")
-	var ad: Dictionary = by.get("dzwiek2", {})
-	ok(str(ad.get("pattern")) == "directional" and ad.has("cone_deg"), "directional audio exports a cone")
-	ok(str((by.get("dym1", {}) as Dictionary).get("kind")) == "smoke", "smoke emitter exports kind smoke")
-	var dv: Array = EmitterFlow._dir_vec(0.0, -90.0)
-	ok(absf(float(dv[1]) + 1.0) < 1e-6, "pitch -90 points straight down")
+	ok(str(EmitterFlow.normalize({"kind": "smoke"})["kind"]) == "particle_smoke", "old kind smoke becomes particle_smoke")
+	var dv: Vector3 = EmitterFlow.dir_of(0.0, -90.0)
+	ok(absf(dv.y + 1.0) < 1e-6, "pitch -90 points straight down")
+	var ep := "user://selftest_export/emitters.glb"
+	var info: Dictionary = main.exporter.export_info()
+	var eres := ModelExporter.export_glb(main.building_root, info, ep)
+	ok(eres["ok"], "export with emitters ok (%s)" % eres["error"])
+	var ej := ModelExporter.read_glb_json(ep)
+	var en := {}
+	for gn in ej.get("nodes", []):
+		en[str(gn.get("name", ""))] = gn
+	var ex_of := func(n: String) -> Dictionary: return (en.get(n, {}) as Dictionary).get("extras", {})
+	var se: Dictionary = ex_of.call("light_okno1")
+	ok(se.has("light_id") and str(se.get("semantic_id")) == "emitter.okno1" and (se["geostudio"]["rect"] as Array).size() == 4, "surface light is a light layer with rect")
+	ok(ex_of.call("light_swiatlo1").has("light_control") and ex_of.call("light_lampa1").has("light_control"), "point and spot lights carry light_control")
+	ok((ej.get("extensionsUsed", []) as Array).has("KHR_lights_punctual"), "KHR_lights_punctual used")
+	var sm: Dictionary = ex_of.call("particles_dym1")
+	ok(sm.has("smoke_source") and str(sm["smoke_source"].get("source")) == "building.smoke", "smoke emitter exports smoke_source bound to its channel")
+	ok(ex_of.call("particles_ogien1").has("smoke_source") and ex_of.call("particles_woda1").has("smoke_source") and ex_of.call("particles_para1").has("smoke_source"), "fire / water / steam export smoke_source")
+	ok(str(ex_of.call("audio_dzwiek1")["audio_source"]["pattern"]) == "omni" and ex_of.call("audio_dzwiek2")["audio_source"].has("cone"), "audio emitters export audio_source (omni / directional cone)")
+	var gsx: Dictionary = ej["asset"]["extras"]["geostudio"]
+	ok(not (gsx.get("channels", []) as Array).is_empty(), "geostudio.channels listed")
 	var gz: Node = main.building_root.get_parent().get_node_or_null("EmitterGizmos")
 	ok(gz != null and gz.get_child_count() >= 5, "markers exist in the 3D view (%d)" % (gz.get_child_count() if gz else -1))
 	var in_export := false
@@ -920,10 +931,6 @@ func _emitter_checks(main: Control) -> void:
 		if str(ch.name).begins_with("Emitter"):
 			in_export = true
 	ok(not in_export, "markers are not part of the exported building")
-	var info: Dictionary = main.exporter.export_info()
-	ok(not (info.get("emitters", []) as Array).is_empty() and not (info.get("channels", []) as Array).is_empty(), "export info carries emitters and channels")
-	var meta: Dictionary = ModelMeta.building(info)
-	ok((meta.get("emitters", []) as Array).size() == EmitterFlow.KINDS.size() and not (meta.get("channels", []) as Array).is_empty(), "the building meta lists the emitters and channels")
 	main.settings.set_value("model_emitters", "[]")
 	main.settings.set_value("model_channels", "[]")
 	await process_frame
@@ -1314,9 +1321,9 @@ func _chimney_checks(main: Control) -> void:
 	var cnames := {}
 	for gn in cj.get("nodes", []):
 		cnames[str(gn.get("name", ""))] = gn
-	var cmeta: Dictionary = cnames.get("chimney_1", {}).get("extras", {}).get("meta", {})
-	ok(str(cmeta.get("layer", "")) == "chimney" and int(cmeta.get("chimney_id", 0)) == 1, "exported chimney node carries layer = chimney and its id")
-	var rm: Dictionary = cnames.get("Building", {}).get("extras", {}).get("meta", {})
+	var cmeta: Dictionary = cnames.get("chimney_1", {}).get("extras", {}).get("geostudio", {})
+	ok(str(cmeta.get("layer", "")) == "chimney" and int(cmeta.get("chimney_id", 0)) == 1 and str(cnames["chimney_1"]["extras"]["semantic_id"]) == "building.part_0.chimney_0", "exported chimney node carries layer = chimney and its id")
+	var rm: Dictionary = cj.get("asset", {}).get("extras", {}).get("geostudio", {})
 	ok((rm.get("chimneys", []) as Array).size() == 1 and absf(float(rm["chimneys"][0]["size"][0]) - 0.6) < 1e-6, "root meta lists the chimney (size, centre, height)")
 	flow.save([])
 	await process_frame

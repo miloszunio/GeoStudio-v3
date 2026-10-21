@@ -59,7 +59,7 @@ godot --headless --path . --export-release "Linux"   build/linux/GeoStudio.x86_6
 
 ## Status – what works and what was not verified
 
-A working prototype (3.0.2). **Not verified**: the T3D export in the MaSzyna simulator itself (the format was rebuilt from the sample pack and automatic checks), importing GLB/glTF into Blender and other engines,
+A working prototype (3.0.3). **Not verified**: the T3D export in the MaSzyna simulator itself (the format was rebuilt from the sample pack and automatic checks), importing GLB/glTF into Blender and other engines,
 running on Windows (paths), the live Geoportal and Nominatim services (developed against a mock server). The roof is a simplified model, not LoD2; windows and doors are not separate geometry;
 ChatGPT does not guarantee the number of windows or the image size. Full list: [manual, section 13](docs/MANUAL.en.md).
 

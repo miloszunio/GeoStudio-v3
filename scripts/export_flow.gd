@@ -55,10 +55,13 @@ func export_info() -> Dictionary:
 	var chim: Array = app.chimneys.export_list()
 	if not chim.is_empty():
 		info["chimneys"] = chim
-	var ems: Array = app.emitters.export_list()
-	if not ems.is_empty():
-		info["emitters"] = ems
-		info["channels"] = app.emitters.channel_export_list()
+	info["app_version"] = str(ProjectSettings.get_setting("application/config/version", ""))
+	info["author"] = app.settings.s("meta_author").strip_edges()
+	info["licence"] = app.settings.s("meta_licence").strip_edges()
+	info["created"] = ProfileExport.local_to_iso_utc(str(app.project.data.get("created", ""))) if app.project.is_open() else ""
+	info["legacy_meta"] = app.settings.b("export_legacy_meta")
+	info["emitter_flow"] = app.emitters
+	info["surfaces"] = _surfaces(info.get("placement", {}) if info.get("placement", null) != null else {})
 	if app._use_textures():
 		info["texture"] = {"file": app.settings.s("tex_source").get_file(), "px_per_m": app.settings.f("tex_px_per_m")}
 		var longs = app.atlas.keys_for_role("facade_long")
@@ -70,6 +73,48 @@ func export_info() -> Dictionary:
 			im.resize(1, 1, Image.INTERPOLATE_BILINEAR)
 			info["colour"] = "#" + im.get_pixel(0, 0).to_html(false)
 	return info
+
+
+## Walls (one per footprint edge) and roof surfaces with stable ids (docs/MODEL_META.md, sections 3 and 7).
+## facing: compass side the surface looks at ("N" "E" "S" "W", "up" for a flat roof); omitted when the model is not placed in the world.
+func _surfaces(placement: Dictionary) -> Array:
+	var out: Array = []
+	for pi in range(app.last_rt.size()):
+		var P: Dictionary = app.last_rt[pi]
+		var pts: PackedVector2Array = P["pts"]
+		for e in range(pts.size()):
+			var fr: Dictionary = app.emitters.wall_frame(pi, e)
+			if fr.is_empty():
+				continue
+			var n: Vector2 = fr["n"]
+			var s := {"id": "building.part_%d.wall_%d" % [pi, e], "part": pi, "role": "wall",
+				"size": [snappedf(float(fr["len"]), 0.001), snappedf(float(P["wall_h"]), 0.001)]}
+			var face := ProfileExport.compass(placement, n.x, n.y)
+			if face != "":
+				s["facing"] = face
+			out.append(s)
+		var roofs: Array = []     # [facing vector (x, z) or Vector2.ZERO for flat]
+		if str(P["mode"]) == "planes":
+			for pl in (P.get("planes", []) as Array):
+				roofs.append(Vector2(-float(pl["a"]), -float(pl["b"])))
+		elif str(P["roof_kind"]) == "gable" and float(P["roof_h"]) > 0.001:
+			if bool(P["ridge_along_x"]):
+				roofs = [Vector2(0, 1), Vector2(0, -1)]
+			else:
+				roofs = [Vector2(1, 0), Vector2(-1, 0)]
+		elif str(P["roof_kind"]) == "flat" or float(P["roof_h"]) <= 0.001:
+			roofs = [Vector2.ZERO]
+		for k in range(roofs.size()):
+			var rs := {"id": "building.part_%d.roof_%d" % [pi, k], "part": pi, "role": "roof"}
+			var v: Vector2 = roofs[k]
+			if v == Vector2.ZERO or v.length() < 0.001:
+				rs["facing"] = "up"
+			else:
+				var face := ProfileExport.compass(placement, v.x, v.y)
+				if face != "":
+					rs["facing"] = face
+			out.append(rs)
+	return out
 
 
 ## Zips a folder (or a list of files) into `zip_path`; paths inside the archive are relative to `root`.

@@ -34,8 +34,7 @@ func _run() -> void:
 		var mi: MeshInstance3D = g.get_child(0)
 		print("RESULT gizmo ", g.name, " pos ", g.position, " visible ", g.is_visible_in_tree(), " aabb ", mi.get_aabb().size)
 	print("RESULT building bb ", main.last_rt[0]["bb"], " wall_h ", main.last_rt[0]["wall_h"], " roof_h ", main.last_rt[0]["roof_h"])
-	print("RESULT meta emitters ", main.emitters.export_list().size(), " ", JSON.stringify(main.emitters.export_list()[0]))
-	print("RESULT first channel ", JSON.stringify(main.emitters.channel_export_list()))
+	print("RESULT channels ", JSON.stringify(main.emitters.channels()))
 	main.tabs.current_tab = 1
 	for _i in 8: await process_frame
 	root.get_texture().get_image().save_png(out.path_join("emitters_3d.png"))
