@@ -87,6 +87,7 @@ func _run() -> void:
 	root.add_child(main)
 	for _i in 6:
 		await process_frame
+	_wipe(ProjectSettings.globalize_path("user://selftest_project0"))
 	main.projflow._open_project(ProjectSettings.globalize_path("user://selftest_project0"))   # importing needs an open project
 
 	ok(main.current_ring.is_empty() and main.current_parts.is_empty(), "scene starts empty (no model)")

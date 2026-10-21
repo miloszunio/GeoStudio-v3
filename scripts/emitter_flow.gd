@@ -626,4 +626,74 @@ func _gizmo(e: Dictionary) -> Node3D:
 			var xax := dir.cross(zax).normalized()
 			holder.basis = Basis(xax, -dir, -zax)
 	mi.material_override = _mat(col)
+	if group == "particle":
+		holder.add_child(_preview_particles(e, preset_of(kind)))
+		(mi.material_override as StandardMaterial3D).albedo_color.a = 0.25     # the cone only marks the nozzle
 	return holder
+
+
+## Live preview of a particle emitter (CPUParticles3D in the same Godot the simulator runs on): the same numbers as `smoke_source`.
+## The holder's -Y axis is the emission direction, so the particles fly along local -Y.
+func _preview_particles(e: Dictionary, preset: String) -> CPUParticles3D:
+	var ps: Dictionary = e["ps"]
+	var life: Array = ps["lifetime"]
+	var spd: Array = ps["speed"]
+	var siz: Array = ps["size"]
+	var lmean := (float(life[0]) + float(life[1])) * 0.5
+	var smean := maxf((float(siz[0]) + float(siz[1])) * 0.5, 0.001)
+	var p := CPUParticles3D.new()
+	p.name = "Preview"
+	p.amount = clampi(int(ceil(float(ps["rate"]) * float(life[1]))), 1, maxi(int(ps["max_particles"]), 1))
+	p.lifetime = maxf(float(life[1]), 0.05)
+	p.lifetime_randomness = clampf(1.0 - float(life[0]) / maxf(float(life[1]), 0.001), 0.0, 1.0)
+	p.preprocess = p.lifetime
+	p.direction = Vector3(0, -1, 0)
+	p.spread = rad_to_deg(float(ps["cone_angle"]))
+	p.initial_velocity_min = float(spd[0])
+	p.initial_velocity_max = float(spd[1])
+	var acc: Array = ps["acceleration"]
+	p.gravity = Vector3(float(acc[0]), float(acc[1]), float(acc[2]))
+	p.local_coords = false
+	p.damping_min = float(ps["drag"])
+	p.damping_max = float(ps["drag"])
+	p.scale_amount_min = float(siz[0]) / smean
+	p.scale_amount_max = float(siz[1]) / smean
+	var end_scale := clampf(1.0 + float(ps["growth"]) * lmean / smean, 0.05, 20.0)
+	var curve := Curve.new()
+	curve.add_point(Vector2(0, 1.0))
+	curve.add_point(Vector2(1, end_scale))
+	p.scale_amount_curve = curve
+	var spec: Array = PARTICLE_MATERIALS[preset]
+	var bc: Array = spec[0]
+	var ramp := Gradient.new()
+	var base := Color(bc[0], bc[1], bc[2], 1.0)
+	match preset:
+		"fire":
+			ramp.colors = PackedColorArray([Color(1, 0.95, 0.5, 0.9), Color(1, 0.45, 0.1, 0.8), Color(0.3, 0.05, 0.0, 0.0)])
+			ramp.offsets = PackedFloat32Array([0.0, 0.45, 1.0])
+		_:
+			ramp.colors = PackedColorArray([Color(base, 0.0), Color(base, float(bc[3])), Color(base, 0.0)])
+			ramp.offsets = PackedFloat32Array([0.0, 0.2, 1.0])
+	p.color_ramp = ramp
+	var q := QuadMesh.new()
+	q.size = Vector2(smean * 1.0, smean * 1.0)
+	var m := StandardMaterial3D.new()
+	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	m.billboard_mode = BaseMaterial3D.BILLBOARD_PARTICLES
+	m.vertex_color_use_as_albedo = true
+	m.blend_mode = BaseMaterial3D.BLEND_MODE_ADD if preset == "fire" else BaseMaterial3D.BLEND_MODE_MIX
+	var gt := GradientTexture2D.new()
+	gt.fill = GradientTexture2D.FILL_RADIAL
+	gt.fill_from = Vector2(0.5, 0.5)
+	gt.fill_to = Vector2(0.5, 0.0)
+	gt.width = 64
+	gt.height = 64
+	var g := Gradient.new()
+	g.colors = PackedColorArray([Color(1, 1, 1, 1), Color(1, 1, 1, 0)])
+	gt.gradient = g
+	m.albedo_texture = gt
+	q.material = m
+	p.mesh = q
+	p.emitting = true
+	return p

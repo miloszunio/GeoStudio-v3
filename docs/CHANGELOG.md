@@ -6,12 +6,14 @@
 - **Eksport glTF/GLB zapisuje domyślnie profil z `MODEL_META.md`** (zgodny z MODEL_FORMAT 0.4.0 MaSzyna Reloaded): `asset.extras` (`model_format_version`, `osm`, `geo` z WGS84 i kierunkiem, `geostudio` z obrysem, dachem, kominami, powierzchniami, kanałami i autorstwem), `asset.copyright`, stabilne `semantic_id` na węzłach, warstwy świateł (`light_id`, `light_state`), `KHR_lights_punctual` z `light_control`, `smoke_source`, `audio_source`. Plik `.meta.json` obok modelu zostaje.
 - Emitery: światło (powierzchnia, punkt, reflektor), **cząstki (dym, ogień, woda, para)**, dźwięk (dookólny, kierunkowy); kanały `budynek.*` w stylu `building.lights`; komin może być miejscem emisji.
 - Opcje projektu: autor, licencja (SPDX), „dodaj stary układ metadanych (v1)” (domyślnie wyłączone).
+- **Podgląd cząstek na żywo** w widoku 3D (dym, ogień, woda, para; CPUParticles3D z parametrami eksportu). MaSzyna Reloaded działa na Godocie, więc wygląd jest zbliżony do gry, ale nie identyczny.
 - Testy: 350 sprawdzeń; nowe `tools/profile_export_test.gd`.
 
 **EN**
 - **glTF/GLB export now writes the `MODEL_META.md` profile by default** (compatible with MaSzyna Reloaded MODEL_FORMAT 0.4.0): `asset.extras` (`model_format_version`, `osm`, `geo` with WGS84 and heading, `geostudio` with footprint, roof, chimneys, surfaces, channels and credits), `asset.copyright`, stable node `semantic_id`s, light layers (`light_id`, `light_state`), `KHR_lights_punctual` with `light_control`, `smoke_source`, `audio_source`. The `.meta.json` sidecar stays.
 - Emitters: light (surface, point, spot), **particles (smoke, fire, water, steam)**, audio (omni, directional); channels named like `building.lights`; a chimney can be the emission point.
 - Project options: author, licence (SPDX), "add the old metadata layout (v1)" (off by default).
+- **Live particle preview** in the 3D view (smoke, fire, water, steam; CPUParticles3D with the export's parameters). MaSzyna Reloaded runs on Godot, so the look is close to the game, but not identical.
 - Tests: 350 checks; new `tools/profile_export_test.gd`.
 
 ## Docs (2026-10-21, po 3.0.2)
