@@ -26,6 +26,7 @@ główna scena tworzy je w `_ready()`. Ustawienia są opisane jednym schematem (
 | `edge_overlay.gd` | `EdgeOverlay` | nakładka krawędzi i wierzchołków („Edged Faces”): geometria w przestrzeni ekranu, dwa przebiegi (widoczne / zasłonięte) |
 | `export_flow.gd`, `model_exporter.gd`, `model_meta.gd` | | eksport GLB / glTF i metadane |
 | `t3d_exporter.gd` | `T3dExporter` | eksport T3D dla MaSzyny: submodele, LOD-y, TGA, `.mat`, `.inc`, nodebank |
+| `scenery.gd`, `scenery_trees.gd`, `scenery_grass.gd`, `scenery_shaders.gd` | `Scenery`, `SceneryTrees`, `SceneryGrass`, `SceneryShaders` | otoczenie podglądu (łąka, drzewa, trawa, droga, chmury, niebo); poza eksportem |
 | `emitter_pick.gd`, `emitter_gizmo.gd`, `emitter_pick_sphere.gd` | `EmitterPick`, `EmitterGizmo`, `EmitterPickSphere` | wybór emitera w 3D (kula), strzałki przesuwania |
 | `emitter_flow.gd` | `EmitterFlow` | emitery (światło, cząstki, deszcz, dźwięk) i kanały: dane w ustawieniach, podgląd i znaczniki 3D, węzły eksportu |
 | `emitter_page.gd` | `EmitterPage` | karta „Emitery”: dodawanie i edycja emiterów (wygląd, warstwy, światło, deszcz) i kanałów |
@@ -69,6 +70,7 @@ the main scene creates them in `_ready()`. All settings are described by one sch
 | `edge_overlay.gd` | `EdgeOverlay` | edge and vertex overlay ("Edged Faces"): screen-space geometry, two passes (visible / hidden) |
 | `export_flow.gd`, `model_exporter.gd`, `model_meta.gd` | | GLB / glTF export and metadata |
 | `t3d_exporter.gd` | `T3dExporter` | T3D export for MaSzyna: submodels, LODs, TGA, `.mat`, `.inc`, nodebank |
+| `scenery.gd`, `scenery_trees.gd`, `scenery_grass.gd`, `scenery_shaders.gd` | `Scenery`, `SceneryTrees`, `SceneryGrass`, `SceneryShaders` | preview surroundings (meadow, trees, grass, road, clouds, sky); never exported |
 | `emitter_pick.gd`, `emitter_gizmo.gd`, `emitter_pick_sphere.gd` | `EmitterPick`, `EmitterGizmo`, `EmitterPickSphere` | 3D emitter picking (ball), move arrows |
 | `emitter_flow.gd` | `EmitterFlow` | emitters (light, particles, rain, audio) and channels: data in settings, 3D preview and markers, export nodes |
 | `emitter_page.gd` | `EmitterPage` | the "Emitery" tab: add and edit emitters (look, layers, light, rain) and channels |

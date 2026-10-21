@@ -22,6 +22,7 @@ var roofed: RoofFlow
 var chimneys: ChimneyFlow
 var emitters: EmitterFlow
 var emitter_pick: EmitterPick
+var scenery: Scenery
 var atlasflow: AtlasFlow
 
 var settings: AppSettings
@@ -160,6 +161,7 @@ func _ready() -> void:
 	_build_viewport()
 	_setup_materials()
 	_apply_view(true)
+	scenery.schedule()
 	if DisplayServer.get_name() != "headless":
 		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN if settings.b("app_fullscreen") else DisplayServer.WINDOW_MODE_MAXIMIZED)
 
@@ -599,6 +601,9 @@ func _build_viewport() -> void:
 	grid_mesh.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	subviewport.add_child(grid_mesh)
 
+	scenery = Scenery.new(self)
+	subviewport.add_child(scenery)
+
 	orbit_root = Node3D.new()
 	subviewport.add_child(orbit_root)
 	camera = Camera3D.new()
@@ -652,6 +657,8 @@ func _on_setting_changed(key: String) -> void:
 		return
 	if key == "tex_enabled":
 		_update_steps()
+	if key.begins_with("view_env") or key == "view_ground_size" or key == "view_cam_yaw" or key == "view_ambient_energy":
+		scenery.schedule()
 	if key.begins_with("view_"):
 		_apply_view(key.begins_with("view_grid"))
 		if key.begins_with("view_wire") or key.begins_with("view_vert"):
@@ -669,6 +676,8 @@ func _on_setting_changed(key: String) -> void:
 		emitters.rebuild_gizmos()      # smoke markers follow the chimneys
 	elif key == "model_emitters" or key == "model_channels" or key == "fx_wind_speed" or key == "fx_wind_dir":
 		emitters.rebuild_gizmos()
+		if key.begins_with("fx_wind"):
+			scenery.set_wind()
 	elif key.begins_with("model_"):
 		if key == "model_wall_height" and not _wall_internal and settings.b("model_walls_from_tex"):
 			settings.set_value("model_walls_from_tex", false)   # a hand-set wall height wins over the texture
@@ -882,8 +891,9 @@ func _apply_view(rebuild_grid: bool) -> void:
 	var gs := float(settings.i("view_ground_size"))
 	(ground.mesh as PlaneMesh).size = Vector2(gs, gs)
 	ground_mat.albedo_color = settings.c("view_ground_color")
-	ground.visible = settings.b("view_show_ground")
-	grid_mesh.visible = settings.b("view_show_grid")
+	ground.visible = settings.b("view_show_ground") and not scenery.active
+	scenery.update_visibility()
+	grid_mesh.visible = settings.b("view_show_grid") and not scenery.active
 	subviewport.debug_draw = Viewport.DEBUG_DRAW_DISABLED
 	if rebuild_grid or grid_mesh.mesh == null:
 		_rebuild_grid()
@@ -2321,6 +2331,7 @@ func _build_parts(parts: Array, reset_view := true) -> bool:
 	current_parts = parts
 	current_ring = parts[0]["raw"]
 	last_rt = rt
+	scenery.schedule()
 	if reset_view:
 		rig._reset_camera()
 	parts_ui._refresh_parts_ui_if_needed()

@@ -1,5 +1,17 @@
 # Historia zmian / Changelog
 
+## 3.0.6 (2026-10-21)
+
+**PL**
+- **Otoczenie w podglądzie** (Widok → „Otoczenie (tylko podgląd)”, domyślnie włączone): łąka z shaderem (ziemia, trawa, plamy suchej trawy), kawałek drogi z krawężnikiem, chodnikiem i żwirowym poboczem, ok. 50 000 źdźbeł trawy i kwiaty kołyszące się na wietrze, dęby, brzozy, świerki i krzewy z tysięcy kart liści (liście ciemniejsze w głębi korony, pnie i gałęzie), las na horyzoncie, płynące chmury, niebo, mgiełka, pory roku (lato, wiosna, jesień). Wiatr z ustawień „Efekty” rusza roślinami, a razem z nim dymem i deszczem. Ustawienia: pora roku, liczba drzew, gęstość trawy, chmury, mgiełka, droga (strona i odległość), ziarno losowania. Kierunek startowej kamery zostaje wolny od drzew.
+- Nic z tego nie trafia do eksportu (eksport czyta tylko węzeł Building). Włączone otoczenie chowa zwykłe podłoże i siatkę. Nowe pliki: `scenery.gd`, `scenery_trees.gd`, `scenery_grass.gd`, `scenery_shaders.gd`, `tools/scenery_shot.gd`. Testy: 382 sprawdzenia.
+- Nie sprawdzono w Forward+ (testy w trybie Compatibility); przy słabszym GPU zmniejsz trawę i drzewa.
+
+**EN**
+- **Surroundings in the preview** (View → "Otoczenie (tylko podgląd)", on by default): a meadow shader (earth, grass, dry patches), a piece of road with kerb, pavement and gravel verge, about 50,000 grass blades and flowers swaying in the wind, oaks, birches, spruces and bushes built from thousands of leaf cards (darker inside the crown, trunks and branches), a forest line on the horizon, drifting clouds, a tuned sky, haze, seasons (summer, spring, autumn). The wind from the "Efekty" settings moves the plants together with smoke and rain. Settings: season, tree count, grass density, clouds, haze, road (side and distance), random seed. The default camera direction is kept free of trees.
+- None of it goes into an export (exports read the Building node only). With the surroundings on, the plain ground and the grid are hidden. New files: `scenery.gd`, `scenery_trees.gd`, `scenery_grass.gd`, `scenery_shaders.gd`, `tools/scenery_shot.gd`. Tests: 382 checks.
+- Not tested in Forward+ (tests ran in Compatibility); on a weaker GPU lower the grass and tree settings.
+
 ## 3.0.5 (2026-10-21)
 
 **PL**
