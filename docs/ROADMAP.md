@@ -14,6 +14,7 @@
 
 | PL | EN |
 |---|---|
+| **Ręczne wrysowywanie powierzchni świecących** (emiterów) na ścianie/połaci bezpośrednio w programie – edytor własny, obok wycinania z panelu. | **Hand-drawing light-emitting surfaces** (emitters) on a wall/roof directly in the app – our own editor, alongside cutting from the panel. |
 | **Autorstwo i licencja w metadanych** (`credits`: autor, daty utworzenia/edycji, licencja SPDX, źródła) oraz ustawienia „Autor” i „Domyślna licencja”. | **Authorship and licence in metadata** (`credits`: author, created/modified dates, SPDX licence, sources) plus "Author" and "Default licence" settings. |
 | **Weryfikacja T3D w MaSzynie / MaSzyna Reloaded**: oś V tekstury, nazwy źródeł dymu przy wielu kominach, `light_on00`, mapy neutralne. Poprawki eksportera wg wyniku. | **T3D verification in MaSzyna / MaSzyna Reloaded**: texture V axis, smoke-source names with several chimneys, `light_on00`, neutral maps. Exporter fixes based on the result. |
 | Test na **Windows** (ścieżki, eksport, `.mgdot`) i **żywych usług** Geoportalu i Nominatim. | Testing on **Windows** (paths, export, `.mgdot`) and the **live** Geoportal and Nominatim services. |

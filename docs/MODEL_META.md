@@ -101,6 +101,8 @@ Fragment powierzchni, który **może** świecić. To wyłącznie opis; nic nie j
 | `strength` | float | jasność względna, domyślnie 1.0 |
 | `mask` | string | (opcjonalnie) plik maski emisji w skali tekstury, jeśli prostokąt nie wystarcza |
 
+**Ręczne wrysowywanie:** powierzchnie świecące można też wrysować „z palca” bezpośrednio w programie (prostokąt na ścianie lub połaci, bez maski ze zdjęcia); wynikiem jest ten sam `rect`. Edytor do tego dorobimy u siebie (patrz [ROADMAP.md](ROADMAP.md)).
+
 Maska w panelu (wycinanka okna) służy **tylko do wyznaczenia `rect`** (i opcjonalnie pliku `mask`). `emissive_light` z wersji 1 zostaje jako przestarzałe i oznacza „cała powierzchnia świeci”.
 Eksport T3D **nie** tworzy podmodeli `light_on` z emiterów (zostaje neutralne `light_on00`).
 
