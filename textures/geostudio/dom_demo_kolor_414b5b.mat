@@ -1,0 +1,4 @@
+shader: normalmap_specgloss
+texture_diffuse: textures/geostudio/dom_demo_kolor_414b5b_diffuse
+texture_normalmap: textures/geostudio/dom_demo_plaska_normalmap
+texture_specgloss: textures/geostudio/dom_demo_matowa_specgloss

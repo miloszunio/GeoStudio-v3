@@ -1,5 +1,15 @@
 # Historia zmian / Changelog
 
+## 3.0.9 (2026-10-25)
+
+**PL**
+- **Eksport T3D: pivot w środku podłogi.** Początek układu głównych submodeli leży teraz dokładnie w środku podłogi budynku (środek prostokąta narożników ścian przy gruncie), podłoga na z = 0; dymy z kominów przesunięte tak samo. Przesunięcie jest zapisane w `info.txt`. Test przesuwa budynek poza środek i sprawdza, że eksport i tak jest wyśrodkowany. Tekstury PNG → TGA (24/32 bit, z `.mat`) powstają przy tym samym eksporcie, razem z modelem.
+- Poprawka: przerwanie startu otoczenia przy zwykłym zamknięciu programu mogło zapisać niewinną część jako „pomijaną”. Zamknięcie zatrzymuje teraz budowę etapową.
+
+**EN**
+- **T3D export: pivot at the centre of the floor.** The origin of the root submodels now sits exactly at the centre of the building floor (the middle of the bounding box of the wall corners on the ground), floor at z = 0; chimney smoke sources shift the same way. The shift is written to `info.txt`. A test moves the building off-centre and checks that the export is still centred. PNG → TGA textures (24/32 bit, with `.mat`) are written by the same export, together with the model.
+- Fix: closing the program normally during the surroundings' staged start could record an innocent part as "skipped". Closing now stops the staged build.
+
 ## 3.0.8 (2026-10-22)
 
 **PL**

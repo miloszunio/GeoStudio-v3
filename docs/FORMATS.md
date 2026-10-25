@@ -59,6 +59,7 @@ info.txt                                                krótki opis paczki
 **Układ współrzędnych.** Godot: Y w górę. T3D (jak 3ds Max): Z w górę. Przekształcenie `(x, y, z) → (x, −z, y)` jest obrotem, więc **kolejność wierzchołków trójkąta jest odwrócona**
 (Godot: front zgodnie z ruchem wskazówek zegara, T3D: przeciwnie). Przód budynku (+Z w Godocie) wypada po stronie −Y, jak w przykładach. Współrzędna **V jest odwrócona** (`v' = 1 − v`),
 a TGA zapisywane od dołu (jak w przykładowych teksturach). Tangenty liczone z UV.
+**Pivot.** Początek układu głównych submodeli (`LOD0`, `LOD1`, `light_on00`, `smokesource_*`) leży **w środku podłogi budynku**: środek prostokąta obejmującego wszystkie narożniki ścian przy gruncie, podłoga na z = 0. Przesunięcie względem widoku w aplikacji jest zapisane w `info.txt`.
 
 **Tekstury.** Każda użyta tekstura (region arkusza lub kolor) → nieskompresowane `.tga` 24-bit (32-bit, gdy ma alfę), zmniejszone do ustawionego maksimum (domyślnie 2048 px).
 `<tekstura>.mat`:
@@ -140,6 +141,7 @@ info.txt                                                short pack description
 **Coordinates.** Godot is Y-up. T3D (like 3ds Max) is Z-up. The mapping `(x, y, z) → (x, −z, y)` is a rotation, so **the triangle vertex order is reversed**
 (Godot: front faces clockwise, T3D: counter-clockwise). The building front (+Z in Godot) ends up on the −Y side, as in the samples. The **V coordinate is flipped** (`v' = 1 − v`)
 and TGA is written bottom-up (like the sample textures). Tangents are computed from the UVs.
+**Pivot.** The origin of the root submodels (`LOD0`, `LOD1`, `light_on00`, `smokesource_*`) is **the centre of the building floor**: the middle of the bounding box of all wall corners on the ground, floor at z = 0. The shift relative to the app view is written to `info.txt`.
 
 **Textures.** Each texture used (an atlas region or a colour) → an uncompressed 24-bit `.tga` (32-bit when it has alpha), reduced to the configured maximum (2048 px by default).
 `<texture>.mat`:

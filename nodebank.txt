@@ -1,0 +1,1 @@
+node 2000 0 none model 0.0 0.0 0.0 0.0 geostudio\dom_demo.t3d textures\geostudio\dom_demo_kolor_414b5b lights 4 endmodel

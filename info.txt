@@ -1,0 +1,15 @@
+Dom Demo – model z Photo-to-3D Studio (GeoStudio)
+
+Zawiera:
+- models/geostudio/dom_demo.t3d (LOD0 0-200 m: 150 wierzchołków, LOD1 200-2000 m: 96)
+- textures/geostudio/ (4 tekstur .tga + .mat; mapy normalnych i połysku są neutralne)
+- scenery/geostudio/dom_demo.inc
+
+Początek układu modelu (pivot głównych submodeli): środek podłogi budynku, podłoga na z = 0.
+(przesunięcie względem widoku w aplikacji: x 0 m, z 0 m)
+
+Wpis do nodebank.txt:
+node 2000 0 none model 0.0 0.0 0.0 0.0 geostudio\dom_demo.t3d textures\geostudio\dom_demo_kolor_414b5b lights 4 endmodel
+
+Wpis na tor doswiadczalny:
+include geostudio/dom_demo.inc 0 0 0 0 end

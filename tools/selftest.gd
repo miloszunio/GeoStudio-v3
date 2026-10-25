@@ -1067,6 +1067,22 @@ func _export_checks(main: Control) -> void:
 	ok(sm.has("LOD0") and float(sm["LOD0"]["max"]) == 200.0 and float(sm["LOD0"]["min"]) == 0.0 and float(sm["LOD1"]["max"]) == 2000.0 and float(sm["LOD1"]["min"]) == 200.0, "LOD distances 0-200 and 200-2000 m")
 	ok(sm.has("LOD0") and str(sm["LOD0"]["map"]) == "-1", "LOD0 takes its texture from the node line (Map: -1)")
 	ok(sm.has("smokesource_light") and (sm["smokesource_light"]["trans"] as Vector3).z > 2.0, "a smoke source stands on the chimney (z up)")
+	var pv0: Vector3 = res["pivot"]
+	for c in main.building_root.get_children():
+		(c as Node3D).position += Vector3(3.0, 0.0, -2.0)      # a building standing off-centre must still be exported centred
+	var dc := T3dExporter.collect(main.building_root, [], {})
+	var fl_lo := Vector2(INF, INF)
+	var fl_hi := Vector2(-INF, -INF)
+	for k in dc["groups"]:
+		var pp: PackedVector3Array = dc["groups"][k]["lod0"]["pos"]
+		for v in pp:
+			if absf(v.z) < 0.03:
+				fl_lo = Vector2(minf(fl_lo.x, v.x), minf(fl_lo.y, v.y))
+				fl_hi = Vector2(maxf(fl_hi.x, v.x), maxf(fl_hi.y, v.y))
+	ok(absf((fl_lo.x + fl_hi.x) * 0.5) < 0.01 and absf((fl_lo.y + fl_hi.y) * 0.5) < 0.01, "T3D pivot: the floor of the building is centred on the origin")
+	ok((dc["pivot"] as Vector3).is_equal_approx(pv0 + Vector3(3.0, 0.0, -2.0)), "T3D pivot follows the building")
+	for c in main.building_root.get_children():
+		(c as Node3D).position -= Vector3(3.0, 0.0, -2.0)
 	var good_idx := true
 	var outward := 0
 	var tris := 0

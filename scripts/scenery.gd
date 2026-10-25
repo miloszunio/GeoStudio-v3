@@ -28,6 +28,7 @@ const GUARD := "user://scenery_guard"        # holds the id of the part that was
 const BAD_FILE := "user://scenery_bad.txt"   # parts that took the program down on this computer; they are skipped
 const LOG_FILE := "user://scenery.log"
 const STAGE_WAIT := 0.7                      # seconds each part is shown before the next one is added (first build per run only)
+static var _guard_written := false          # this very process wrote the guard (a second Scenery in tests must not read it as a crash)
 var _gen := 0
 var _proven := false                         # the staged build of this run finished without dying
 var _bad: Array = []
@@ -67,7 +68,7 @@ func reset_bad() -> void:
 ## so the rest of the scene still comes up and the culprit is found without anyone reading a log.
 func startup() -> void:
 	_load_bad()
-	if FileAccess.file_exists(GUARD):
+	if FileAccess.file_exists(GUARD) and not _guard_written:
 		var id := FileAccess.get_file_as_string(GUARD).strip_edges()
 		DirAccess.remove_absolute(ProjectSettings.globalize_path(GUARD))
 		if id != "" and not _bad.has(id):
@@ -79,11 +80,14 @@ func startup() -> void:
 
 
 func _exit_tree() -> void:
-	# a normal exit clears the guard; only a crash leaves it behind
+	# a normal exit clears the guard (and stops a staged build that is still running); only a crash leaves it behind
+	_gen += 1
+	_guard_written = false
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(GUARD))
 
 
 func _mark(id: String) -> void:
+	_guard_written = true
 	var f := FileAccess.open(GUARD, FileAccess.WRITE)
 	if f != null:
 		f.store_string(id)

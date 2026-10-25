@@ -166,12 +166,35 @@ static func submodel_text(name: String, parent: String, map: String, max_d: floa
 	return s + NL.join(lines) + NL
 
 
+## Centre of the building floor (x, z in model space): the middle of the bounding box of every wall vertex that stands on the ground.
+## The exported model is shifted so that this point becomes the origin (the pivot of the root submodels), with the floor at z = 0.
+static func floor_centre(root: Node3D) -> Vector3:
+	var lo := Vector2(INF, INF)
+	var hi := Vector2(-INF, -INF)
+	for child in root.get_children():
+		if not (child is MeshInstance3D) or (child as MeshInstance3D).mesh == null or not str(child.name).begins_with("Walls"):
+			continue
+		var mi := child as MeshInstance3D
+		for si in range(mi.mesh.get_surface_count()):
+			var vv: PackedVector3Array = mi.mesh.surface_get_arrays(si)[Mesh.ARRAY_VERTEX]
+			for v in vv:
+				var w := mi.transform * v
+				if w.y <= 0.03:
+					lo = Vector2(minf(lo.x, w.x), minf(lo.y, w.z))
+					hi = Vector2(maxf(hi.x, w.x), maxf(hi.y, w.z))
+	if lo.x == INF:
+		return Vector3.ZERO
+	return Vector3((lo.x + hi.x) * 0.5, 0.0, (lo.y + hi.y) * 0.5)
+
+
 ## Collects the model into groups by texture. Returns {groups: {key: {tex: Texture2D|null, color: Color, lod0: mesh, lod1: mesh, lit: mesh}},
 ## order: keys by area (largest first), smoke: [Vector3 in T3D space]}.
 ## `names` maps a texture instance id to a readable name.
 static func collect(root: Node3D, chimneys: Array, names: Dictionary) -> Dictionary:
 	var groups := {}
 	var area := {}
+	var pivot := floor_centre(root)
+	var shift := Transform3D(Basis.IDENTITY, -pivot)
 	for child in root.get_children():
 		if not (child is MeshInstance3D) or not child.has_meta("pick_ids") or (child as MeshInstance3D).mesh == null:
 			continue
@@ -202,7 +225,7 @@ static func collect(root: Node3D, chimneys: Array, names: Dictionary) -> Diction
 			var targets: Array = ["lod0"] if is_chimney else ["lod0", "lod1"]
 			if lit:
 				targets.append("lit")
-			var tr := mi.transform
+			var tr := shift * mi.transform
 			for tgt in targets:
 				_append(groups[key][tgt], vv, nn, uu, ii, tr)
 			for t in range(ii.size() / 3):
@@ -212,8 +235,8 @@ static func collect(root: Node3D, chimneys: Array, names: Dictionary) -> Diction
 	var smoke: Array = []
 	for c in chimneys:
 		var p: Array = c["centre"]
-		smoke.append(to_t3d(Vector3(float(p[0]), float(c["top_y"]), float(p[1]))))
-	return {"groups": groups, "order": order, "smoke": smoke}
+		smoke.append(to_t3d(Vector3(float(p[0]), float(c["top_y"]), float(p[1])) - pivot))
+	return {"groups": groups, "order": order, "smoke": smoke, "pivot": pivot}
 
 
 static func _new_mesh() -> Dictionary:
@@ -374,6 +397,9 @@ static func export(root: Node3D, chimneys: Array, name: String, out_dir: String,
 	info += "Zawiera:" + NL + "- models/%s/%s.t3d (LOD0 0-200 m: %d wierzchołków, LOD1 200-2000 m: %d)" % [folder, nm, int(res["verts0"]), int(res["verts1"])] + NL
 	info += "- textures/%s/ (%d tekstur .tga + .mat; mapy normalnych i połysku są neutralne)" % [folder, order.size()] + NL
 	info += "- scenery/%s/%s.inc" % [folder, nm] + NL + NL
+	var pv: Vector3 = data["pivot"]
+	info += "Początek układu modelu (pivot głównych submodeli): środek podłogi budynku, podłoga na z = 0." + NL
+	info += "(przesunięcie względem widoku w aplikacji: x %s m, z %s m)" % [_n(pv.x), _n(pv.z)] + NL + NL
 	info += "Wpis do nodebank.txt:" + NL + bank + NL
 	info += "Wpis na tor doswiadczalny:" + NL + "include %s/%s.inc 0 0 0 0 end" % [folder, nm] + NL
 	var nf := FileAccess.open(out_dir.path_join("info.txt"), FileAccess.WRITE)
@@ -381,4 +407,5 @@ static func export(root: Node3D, chimneys: Array, name: String, out_dir: String,
 		nf.store_string(info)
 		nf.close()
 	res["ok"] = true
+	res["pivot"] = data["pivot"]
 	return res
